@@ -1,8 +1,6 @@
 #ifndef VGA_PAL_H
 #define VGA_PAL_H
 
-enum pal_type { CGA_PAL, VGA_PAL };
-
 const img_pal vga_pal[256] = {
 {0,0,0},
 {0,0,168},
@@ -260,36 +258,6 @@ const img_pal vga_pal[256] = {
 {0,0,0},
 {0,0,0},
 {0,0,0}
-};
-
-const img_pal cga_pal[16] = {
-{0,0,0},
-{0,0,168},
-{0,168,0},
-{0,168,168},
-{168,0,0},
-{168,0,168},
-{168,87,0},
-{168,168,168},
-{87,87,87},
-{87,87,255},
-{87,255,87},
-{87,255,255},
-{255,87,87},
-{255,87,255},
-{255,255,87},
-{255,255,255}
-};
-
-typedef struct {
-pal_type set;
-int palette_entries;
-const img_pal *pal;
-} palette_def;
-
-static const palette_def palettes[] = {
-{ CGA_PAL, 16, cga_pal },
-{ VGA_PAL, 256, vga_pal }
 };
 
 #endif
