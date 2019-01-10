@@ -9,9 +9,12 @@
 
 #ifdef __BORLANDC__
 #include <iostream.h>
+#include <iomanip.h>
 #else
-#include <iostream> // std::cout
-#include <iomanip> // std::setw()
+#include <iostream> // cout
+#include <iomanip> // setw()
+
+using namespace std;
 #endif
 
 template <class matrix_t>
@@ -74,11 +77,11 @@ template <class matrix_t>
 void matrix<matrix_t>::print(matrix& m)
 {
 	for(int y=0;y<m._rows;y++) {
-		std::cout<<"[";
+		cout<<"[";
 		for(int x=0;x<m._cols;x++) {
-			std::cout << std::setw(5) << m._matrix[y*m._cols+x] << " ";
+			cout << setw(5) << m._matrix[y*m._cols+x] << " ";
 		}
-		std::cout<<"]"<<std::endl;
+		cout<<"]"<<endl;
 	}
 }
 
@@ -101,7 +104,7 @@ int main(void)
 	}
 
 	matrix<float>::print(a);
-	std::cout<<"xxxx"<<std::endl;
+	cout<<"xxxx"<<endl;
 
 	b.init(4,4);
 
@@ -111,37 +114,37 @@ int main(void)
 	b.xy(3,0)=5; b.xy(3,1)=5; b.xy(3,2)=5; b.xy(3,3)=5;
 
 	matrix<float>::print(b);
-	std::cout<<"----"<<std::endl;
+	cout<<"----"<<endl;
 	c.init(4,4);
 
 	matrix<float>::mul(a,b,c);
 
 	matrix<float>::print(c);
-	std::cout<<"----"<<std::endl;
+	cout<<"----"<<endl;
 
 	d.init(1,4);
 
 	d.xy(0,0)=5; d.xy(0,1)=6; d.xy(0,2)=7; d.xy(0,3)=8;
 
 	matrix<float>::print(d);
-	std::cout<<"xxxx"<<std::endl;
+	cout<<"xxxx"<<endl;
 
 	matrix<float>::print(b);
-	std::cout<<"----"<<std::endl;
+	cout<<"----"<<endl;
 
 	e.init(1,4);
 
 	matrix<float>::mul(d,b,e);
 
 	matrix<float>::print(e);
-	std::cout<<"----"<<std::endl;
+	cout<<"----"<<endl;
 
 	c.init(1,2);
 
 	c.xy(0,0)=5; c.xy(0,1)=6;
 
 	matrix<float>::print(c);
-	std::cout<<"xxxx"<<std::endl;
+	cout<<"xxxx"<<endl;
 
 	d.init(2,2);
 
@@ -149,32 +152,33 @@ int main(void)
 	d.xy(1,0)=3; d.xy(1,1)=4;
 
 	matrix<float>::print(d);
-	std::cout<<"----"<<std::endl;
+	cout<<"----"<<endl;
 
 	e.init(1,2);
 
 	matrix<float>::mul(c,d,e);
 
 	matrix<float>::print(e);
-	std::cout<<"----"<<std::endl;
+	cout<<"----"<<endl;
 
 	matrix<float>::print(d);
-	std::cout<<"xxxx"<<std::endl;
+	cout<<"xxxx"<<endl;
 
 	c.init(2,1);
 
 	c.xy(0,0)=5; c.xy(1,0)=6;
 
 	matrix<float>::print(c);
-	std::cout<<"----"<<std::endl;
+	cout<<"----"<<endl;
 
 	e.init(2,1);
 
 	matrix<float>::mul(d,c,e);
 
 	matrix<float>::print(e);
-	std::cout<<"----"<<std::endl;
+	cout<<"----"<<endl;
 
+	return 0;
 }
 
 #endif
