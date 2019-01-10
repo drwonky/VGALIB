@@ -1,10 +1,10 @@
 #include <math.h>
 #include <stdio.h>
-#include "TYPES.H"
-#include "MEMORY.H"
-#include "IMAGE.H"
-#include "sincos.h"
 #include <string.h>
+#include "types.h"
+#include "memory.h"
+#include "image.h"
+#include "sincos.h"
 
 image::image(const image& img)
 {
@@ -13,7 +13,7 @@ image::image(const image& img)
 	bg=img.bg;
 	allocate();
 	memory::fast_memcpy(buffer,img.buffer,w*h);
-	copypalette(img.palette());
+	copypalette(img);
 }
 
 image& image::operator = (const image& img)
@@ -24,7 +24,7 @@ image& image::operator = (const image& img)
 	if (buffer) delete[] buffer;
 	allocate();
 	memory::fast_memcpy(buffer,img.buffer,w*h);
-	copypalette(img.palette());
+	copypalette(img);
 
 	return *this;
 }
@@ -47,6 +47,7 @@ image::image(void)
 	bg=0;
 	buffer=NULL;
 	mpalette=NULL;
+	setpalette(VGA_PAL);
 }
 
 image::image(unsigned int width, unsigned int height)
@@ -54,6 +55,7 @@ image::image(unsigned int width, unsigned int height)
 	bg=0;
 	buffer=NULL;
 	mpalette=NULL;
+	setpalette(VGA_PAL);
 	size(width,height);
 }
 
@@ -62,21 +64,46 @@ image::image(unsigned int width, unsigned int height, unsigned char background)
 	bg=background;
 	buffer=NULL;
 	mpalette=NULL;
+	setpalette(VGA_PAL);
 	size(width,height);
+}
+
+bool image::copypalette(const image& img)
+{
+	mpalette_size=img.palette_size();
+	if (mpalette) delete[] mpalette;
+	
+	mpalette=new img_pal[mpalette_size];
+
+	if (mpalette == NULL) return false;
+
+	memcpy(mpalette,img.palette(),sizeof(img_pal)*mpalette_size);
+
+	return true;
 }
 
 void image::copypalette(img_pal *p)
 {
-	memcpy(mpalette,p,sizeof(img_pal)*palette_size);
+        memcpy(mpalette,p,sizeof(img_pal)*mpalette_size);
+}
+
+bool image::setpalette(pal_type pal)
+{
+	mpalette_size=palettes[pal].palette_entries;
+	mpalette=new img_pal[mpalette_size];
+
+	if (mpalette == NULL) return false;
+
+	memcpy(mpalette,palettes[pal].pal,sizeof(img_pal)*mpalette_size);
+
+	return true;
 }
 
 bool image::allocate(void)
 {
 	buffer=new unsigned far char [w*h];
-	mpalette=new img_pal[palette_size];
 
 	if(buffer) clear();
-	if(mpalette) copypalette((img_pal *)vga_pal);
 
 	return (bool)(buffer != NULL && mpalette != NULL);
 }
@@ -89,11 +116,11 @@ bool image::size(unsigned int width, unsigned int height)
 	return allocate();
 }
 
-int image::mappalentry(img_pal *p)
+unsigned char image::lookuppalentry(img_pal *p)
 {
 	int i;
 
-	for (i=0; i<palette_size; i++) 
+	for (i=0; i<mpalette_size; i++) 
 		if (mpalette[i].r == p->r &&
 			mpalette[i].g == p->g &&
 			mpalette[i].b == p->b) {
@@ -101,7 +128,50 @@ int image::mappalentry(img_pal *p)
 				return i;
 			}
 
-	return palette_size-1;
+	return mpalette_size-1;
+}
+
+// weighted squares color distance calculation
+int32_t image::wcolordist(img_pal *a, img_pal *b)
+{
+	int32_t R,G,B;
+
+	R=(int32_t)(a->r-b->r)*(int32_t)(a->r-b->r);
+	G=(int32_t)(a->g-b->g)*(int32_t)(a->g-b->g);
+	B=(int32_t)(a->b-b->b)*(int32_t)(a->b-b->b);
+	return 2*R+4*G+3*B;
+}
+
+// squares color distance calculation
+int32_t image::colordist(img_pal *a, img_pal *b)
+{
+	int32_t R,G,B;
+
+	R=(int32_t)(a->r-b->r)*(int32_t)(a->r-b->r);
+	G=(int32_t)(a->g-b->g)*(int32_t)(a->g-b->g);
+	B=(int32_t)(a->b-b->b)*(int32_t)(a->b-b->b);
+	return R+G+B;
+}
+
+// find closest matching color in image palette
+unsigned char image::findnearestpalentry(img_pal *p)
+{
+	int i;
+	unsigned char lowindex=0;
+	int32_t lowdist,distance;
+
+	lowdist=0x2fa03; // max possible color distance	
+
+	for (i=0; i<mpalette_size; i++) {
+		distance=wcolordist(p,&mpalette[i]);
+
+		if (distance < lowdist) {  // sort result
+			lowindex=i;
+			lowdist=distance;
+		}
+	}
+
+	return lowindex;
 }
 
 img_pal image::getpalentry(int i)
@@ -321,7 +391,7 @@ void image::copyto(image far *src, image far *dest, unsigned int sx, unsigned in
 }
 
 /*
-void image::rotate(image far *dest, int angle)
+void image::rotate(image& dest, int angle)
 {
 	int hwidth = w / 2;
 	int hheight = h / 2;
@@ -338,22 +408,21 @@ void image::rotate(image far *dest, int angle)
 			ys = (int)floor((sinma * xt + cosma * yt) + hheight);
 
 			if(xs >= 0 && xs < w && ys >= 0 && ys < h) {
-				dest->setpixel(x,y,getpixel(xs,ys));
+				dest.setpixel(x,y,getpixel(xs,ys));
 			} else {
-				dest->setpixel(x,y);
+				dest.setpixel(x,y);
 			}
 		}
 	}
 }
 */
-
 void image::rotate(image& dest, int angle)
 {
-	int hwidth = w / 2;
-	int hheight = h / 2;
-	long sinma = sindeg[angle];
-	long cosma = cosdeg[angle];
-	long xt,yt,xs,ys;
+	int32_t hwidth = w / 2;
+	int32_t hheight = h / 2;
+	int32_t sinma = sindeg[angle];
+	int32_t cosma = cosdeg[angle];
+	int32_t xt,yt,xs,ys;
 	unsigned int x,y;
 
 	for(x = 0; x < w; x++) {
@@ -361,20 +430,16 @@ void image::rotate(image& dest, int angle)
 		for(y = 0; y < h; y++) {
 			yt = y - hheight;
 
-			xs =  cosma * xt;
-			xs -= sinma * yt;
-			xs >>= 14;
+			xs =  (cosma * xt - sinma * yt)/16384;
 			xs += hwidth;
-			ys =  sinma * xt;
-			ys += cosma * yt;
-			ys >>= 14;
+			ys =  (sinma * xt + cosma * yt)/16384;
 			ys += hheight;
-			if(xs >= 0 && xs < w && ys >= 0 && ys < h) {
-				dest.buffer[y*w+x]=buffer[ys*w+xs];
-//				dest.setpixel(x,y,getpixel(xs,ys));
+			if(xs >= 0 && xs < (int32_t)w && ys >= 0 && ys < (int32_t)h) {
+				//dest.buffer[y*w+x]=buffer[ys*w+xs];
+				dest.setpixel(x,y,getpixel(xs,ys));
 			} else {
-//				dest.setpixel(x,y);
-				dest.buffer[y*w+x]=bg;
+				dest.setpixel(x,y);
+				//dest.buffer[y*w+x]=bg;
 			}
 		}
 	}
@@ -450,3 +515,21 @@ void image::printhex(void)
     }
 }
 
+void image::dumppalette(void)
+{
+	int i;
+
+	for (i=0;i<mpalette_size;i++) {
+		printf("%d: %02x %02x %02x\n",i,mpalette[i].r,mpalette[i].g,mpalette[i].b);
+	}
+}
+
+/*
+void image::drawtile(image& image, int x, int y, char bpp, unsigned char color, unsigned char *tiledata)
+{
+	int tx,ty;
+
+	switch(bpp) {
+		case 1:
+			for(tx=0;tx<
+*/

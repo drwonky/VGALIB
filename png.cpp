@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-#include "IMAGE.H"
+#include "image.h"
+#include "types.h"
 
 #ifdef __BORLANDC__
 #include <fstream.h>
@@ -19,12 +20,6 @@ using namespace std;
 
 #define BUFSIZE 8192
 
-#ifdef DEBUG
-#define debug(s) s
-#else
-#define debug(s)
-#endif
-
 png::png(void)
 {
 
@@ -36,6 +31,18 @@ png::png(void)
 	trns_size=0;
 	width=0;
 	height=0;
+	colors=GRAY;
+	depth=0;
+	interlace=0;
+	compress=0;
+	ppu_x=0;
+	ppu_y=0;
+	unit=0;
+	scanline_size=0;
+	len=0;
+	crc=0;
+	png_buf_size=0;
+	uncompressed_len=0;
 
 }
 
@@ -46,10 +53,10 @@ png::~png(void)
 
 void png::free(void)
 {
-	if (image_buffer) delete[] image_buffer;
-	if (pal) delete[] pal;
-	if (trns) delete[] trns;
-	if (buffer) delete[] buffer;
+	if (image_buffer) { delete[] image_buffer; image_buffer=NULL; }
+	if (pal) { delete[] pal; pal=NULL; }
+	if (trns) { delete[] trns; trns=NULL; }
+	if (buffer) { delete[] buffer; buffer=NULL; }
 }
 
 png_blk_type png::png_block_name(png_chunk *chunk)
@@ -411,6 +418,7 @@ bool png::convert2image(image& img)
 	int x,y,i;
 	unsigned char *pemap;
 	unsigned char p;
+	img_pal ip;
 
 	if (!img.size(width,height))
 		return false;
@@ -425,7 +433,10 @@ bool png::convert2image(image& img)
 		case INDEXED:
 			pemap = new unsigned char[pal_size];
 			for (i=0; i<pal_size; i++) {
-				pemap[i]=img.mappalentry((img_pal *)&pal[i]);
+				ip.r=pal[i].red;
+				ip.g=pal[i].green;
+				ip.b=pal[i].blue;
+				pemap[i]=img.findnearestpalentry(&ip);
 				debug(printf("pemap[%d]=%d %02x %d %d %d\n",i,pemap[i],pemap[i],pal[i].red,pal[i].green,pal[i].blue);)
 			}
 
@@ -469,6 +480,7 @@ int main(int argc, char *argv[])
 	png p;
 	image i;
 
+	i.setpalette(CGA_PAL);
 	p.load(argv[1]);
 	p.convert2image(i);
 

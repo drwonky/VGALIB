@@ -1,8 +1,8 @@
 #include <string.h>
 #include <stdio.h>
-#include "IMAGE.H"
+#include "image.h"
 #include "vtext.h"
-#include "TYPES.H"
+#include "types.h"
 
 vtext::vtext()
 {

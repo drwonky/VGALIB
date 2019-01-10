@@ -11,8 +11,7 @@
 #include <stddef.h>
 #include <string.h>
 
-typedef float matrix_t;
-
+template <class matrix_t>
 class matrix {
 protected:
 	int _rows;

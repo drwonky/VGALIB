@@ -1,7 +1,7 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
-#include "TYPES.H"
+#include "types.h"
 
 class memory {
 

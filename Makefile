@@ -1,19 +1,154 @@
-all: vga.exe
+BCC = bcc
+BCFLAGS = -a- -3 -Fs- -mh -v
+
+CFLAGS = -ggdb
+# -DTEST -DDEBUG
+
+CC = gcc
+CXX = g++
+
+SRC = png.cpp image.cpp memory.cpp vtext.cpp
+OBJS = png.o image.o memory.o vtext.o vga.o
+BIN = png vga VGA.EXE
+SDLFLAGS = $(shell sdl-config --cflags --libs)
+
+all:
+
+.cpp.o:
+	$(CXX) $(CFLAGS) -c -o $@ $<
+	
+.c.o:
+	$(CC) $(CFLAGS) -o $@ $<
+
+.obj.cpp:
+	$(BCC) $(BCFLAGS) -c $<
+	
+depend: $(SRC)
+	makedepend -- $(CFLAGS) -- $^
+	
+vtext.obj: vtext.cpp fonts.h
 
 memory.obj: memory.cpp
-	bcc -c -B -3 -Fs- -mh -v memory.cpp
+	$(BCC) $(BCFLAGS) -B -c memory.cpp
 
 png.obj: png.cpp image.obj memory.obj zlib.h zconf.h
-	bcc -c -3 -Fs- -mh -v png.cpp
 
 image.obj: image.cpp
-	bcc -c -3 -Fs- -mh -v image.cpp
 
 vga.obj: vga.cpp
-	bcc -c -B -3 -Fs- -mh -v vga.cpp
+	$(BCC) $(BCFLAGS) -B -c vga.cpp
+	
+#png.o: png.cpp
+#	$(CXX) $(CFLAGS) -DTEST -DDEBUG -c -o $@ $^
 
+matrix: matrix.cpp
+	$(CXX) $(CFLAGS) -DTEST -o $@ $^
+
+png: image.o memory.o png.o
+	$(CXX) $(CFLAGS) -o $@ $^ -lz
+
+vga: vga.o image.o memory.o png.o vtext.o
+	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz
+	
 png.exe: png.cpp memory.obj image.cpp zlib.h zconf.h zlib_h.lib
 	bcc -DDEBUG -DTEST -3 -Fs- -mh -v png.cpp memory.obj image.cpp zlib_h.lib
 
-vga.exe: memory.obj image.obj png.obj vga.obj zlib_h.lib
-	bcc -3 -Fs- -mh -v vga.obj image.obj memory.obj png.obj zlib_h.lib
+vga.exe: memory.obj image.obj png.obj vga.obj zlib_h.lib vtext.obj
+	$(BCC) $(BCFLAGS) vga.obj image.obj memory.obj png.obj vtext.obj zlib_h.lib
+	
+clean:
+	rm -f $(OBJS) $(BIN)
+
+# DO NOT DELETE
+
+png.o: /usr/include/stdio.h /usr/include/bits/libc-header-start.h
+png.o: /usr/include/features.h /usr/include/stdc-predef.h
+png.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+png.o: /usr/include/bits/long-double.h /usr/include/gnu/stubs.h
+png.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+png.o: /usr/include/bits/types/__FILE.h /usr/include/bits/types/FILE.h
+png.o: /usr/include/bits/libio.h /usr/include/bits/_G_config.h
+png.o: /usr/include/bits/types/__mbstate_t.h /usr/include/bits/stdio_lim.h
+png.o: /usr/include/bits/sys_errlist.h /usr/include/string.h
+png.o: /usr/include/bits/types/locale_t.h
+png.o: /usr/include/bits/types/__locale_t.h /usr/include/strings.h image.h
+png.o: types.h /usr/include/stdint.h /usr/include/bits/wchar.h
+png.o: /usr/include/bits/stdint-intn.h /usr/include/bits/stdint-uintn.h
+png.o: palettes.h /usr/include/zlib.h zconf.h /usr/include/limits.h
+png.o: /usr/include/bits/posix1_lim.h /usr/include/bits/local_lim.h
+png.o: /usr/include/linux/limits.h /usr/include/bits/posix2_lim.h
+png.o: /usr/include/sys/types.h /usr/include/bits/types/clock_t.h
+png.o: /usr/include/bits/types/clockid_t.h /usr/include/bits/types/time_t.h
+png.o: /usr/include/bits/types/timer_t.h /usr/include/endian.h
+png.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
+png.o: /usr/include/bits/byteswap-16.h /usr/include/bits/uintn-identity.h
+png.o: /usr/include/sys/select.h /usr/include/bits/select.h
+png.o: /usr/include/bits/types/sigset_t.h
+png.o: /usr/include/bits/types/__sigset_t.h
+png.o: /usr/include/bits/types/struct_timeval.h
+png.o: /usr/include/bits/types/struct_timespec.h /usr/include/sys/sysmacros.h
+png.o: /usr/include/bits/sysmacros.h /usr/include/bits/pthreadtypes.h
+png.o: /usr/include/bits/thread-shared-types.h
+png.o: /usr/include/bits/pthreadtypes-arch.h png.h
+image.o: /usr/include/math.h /usr/include/bits/libc-header-start.h
+image.o: /usr/include/features.h /usr/include/stdc-predef.h
+image.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+image.o: /usr/include/bits/long-double.h /usr/include/gnu/stubs.h
+image.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+image.o: /usr/include/bits/math-vector.h
+image.o: /usr/include/bits/libm-simd-decl-stubs.h /usr/include/bits/floatn.h
+image.o: /usr/include/bits/floatn-common.h
+image.o: /usr/include/bits/flt-eval-method.h /usr/include/bits/fp-logb.h
+image.o: /usr/include/bits/fp-fast.h
+image.o: /usr/include/bits/mathcalls-helper-functions.h
+image.o: /usr/include/bits/mathcalls.h /usr/include/bits/iscanonical.h
+image.o: /usr/include/stdio.h /usr/include/bits/types/__FILE.h
+image.o: /usr/include/bits/types/FILE.h /usr/include/bits/libio.h
+image.o: /usr/include/bits/_G_config.h /usr/include/bits/types/__mbstate_t.h
+image.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
+image.o: /usr/include/string.h /usr/include/bits/types/locale_t.h
+image.o: /usr/include/bits/types/__locale_t.h /usr/include/strings.h types.h
+image.o: /usr/include/stdint.h /usr/include/bits/wchar.h
+image.o: /usr/include/bits/stdint-intn.h /usr/include/bits/stdint-uintn.h
+image.o: memory.h image.h palettes.h sincos.h
+memory.o: /usr/include/stdlib.h /usr/include/bits/libc-header-start.h
+memory.o: /usr/include/features.h /usr/include/stdc-predef.h
+memory.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+memory.o: /usr/include/bits/long-double.h /usr/include/gnu/stubs.h
+memory.o: /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h
+memory.o: /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h
+memory.o: /usr/include/sys/types.h /usr/include/bits/types.h
+memory.o: /usr/include/bits/typesizes.h /usr/include/bits/types/clock_t.h
+memory.o: /usr/include/bits/types/clockid_t.h
+memory.o: /usr/include/bits/types/time_t.h /usr/include/bits/types/timer_t.h
+memory.o: /usr/include/bits/stdint-intn.h /usr/include/endian.h
+memory.o: /usr/include/bits/endian.h /usr/include/bits/byteswap.h
+memory.o: /usr/include/bits/byteswap-16.h /usr/include/bits/uintn-identity.h
+memory.o: /usr/include/sys/select.h /usr/include/bits/select.h
+memory.o: /usr/include/bits/types/sigset_t.h
+memory.o: /usr/include/bits/types/__sigset_t.h
+memory.o: /usr/include/bits/types/struct_timeval.h
+memory.o: /usr/include/bits/types/struct_timespec.h
+memory.o: /usr/include/sys/sysmacros.h /usr/include/bits/sysmacros.h
+memory.o: /usr/include/bits/pthreadtypes.h
+memory.o: /usr/include/bits/thread-shared-types.h
+memory.o: /usr/include/bits/pthreadtypes-arch.h /usr/include/alloca.h
+memory.o: /usr/include/bits/stdlib-float.h memory.h types.h
+memory.o: /usr/include/stdint.h /usr/include/bits/wchar.h
+memory.o: /usr/include/bits/stdint-uintn.h /usr/include/string.h
+memory.o: /usr/include/bits/types/locale_t.h
+memory.o: /usr/include/bits/types/__locale_t.h /usr/include/strings.h
+vtext.o: /usr/include/string.h /usr/include/bits/libc-header-start.h
+vtext.o: /usr/include/features.h /usr/include/stdc-predef.h
+vtext.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
+vtext.o: /usr/include/bits/long-double.h /usr/include/gnu/stubs.h
+vtext.o: /usr/include/bits/types/locale_t.h
+vtext.o: /usr/include/bits/types/__locale_t.h /usr/include/strings.h
+vtext.o: /usr/include/stdio.h /usr/include/bits/types.h
+vtext.o: /usr/include/bits/typesizes.h /usr/include/bits/types/__FILE.h
+vtext.o: /usr/include/bits/types/FILE.h /usr/include/bits/libio.h
+vtext.o: /usr/include/bits/_G_config.h /usr/include/bits/types/__mbstate_t.h
+vtext.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
+vtext.o: image.h types.h /usr/include/stdint.h /usr/include/bits/wchar.h
+vtext.o: /usr/include/bits/stdint-intn.h /usr/include/bits/stdint-uintn.h
+vtext.o: palettes.h vtext.h fonts.h

@@ -14,7 +14,8 @@
 #include <iomanip> // std::setw()
 #endif
 
-void matrix::mul(matrix& a, matrix& b, matrix& c)
+template <class matrix_t>
+void matrix<matrix_t>::mul(matrix& a, matrix& b, matrix& c)
 {
 	int col,cell,cellcnt,colcnt,rowcnt;
 	matrix_t acc;
@@ -35,7 +36,8 @@ void matrix::mul(matrix& a, matrix& b, matrix& c)
 	}
 }
 
-void matrix::add(matrix& a, matrix& b, matrix& c)
+template <class matrix_t>
+void matrix<matrix_t>::add(matrix& a, matrix& b, matrix& c)
 {
 	int row,col,rowcnt,colmax;
 
@@ -51,7 +53,8 @@ void matrix::add(matrix& a, matrix& b, matrix& c)
 	}
 }
 
-void matrix::sub(matrix& a, matrix& b, matrix& c)
+template <class matrix_t>
+void matrix<matrix_t>::sub(matrix& a, matrix& b, matrix& c)
 {
 	int row,col,rowcnt,colmax;
 
@@ -67,7 +70,8 @@ void matrix::sub(matrix& a, matrix& b, matrix& c)
 	}
 }
 
-void matrix::print(matrix& m)
+template <class matrix_t>
+void matrix<matrix_t>::print(matrix& m)
 {
 	for(int y=0;y<m._rows;y++) {
 		std::cout<<"[";
@@ -81,10 +85,10 @@ void matrix::print(matrix& m)
 #ifdef TEST
 int main(void)
 {
-	matrix a,b,c,d,e,f;
+	matrix<float> a,b,c,d,e,f;
 	int row,col;
 
-	matrix_t i;
+	float i;
 
 	a.init(4,4);
 
@@ -96,7 +100,7 @@ int main(void)
 		}
 	}
 
-	matrix::print(a);
+	matrix<float>::print(a);
 	std::cout<<"xxxx"<<std::endl;
 
 	b.init(4,4);
@@ -106,37 +110,37 @@ int main(void)
 	b.xy(2,0)=4; b.xy(2,1)=4; b.xy(2,2)=4; b.xy(2,3)=5;
 	b.xy(3,0)=5; b.xy(3,1)=5; b.xy(3,2)=5; b.xy(3,3)=5;
 
-	matrix::print(b);
+	matrix<float>::print(b);
 	std::cout<<"----"<<std::endl;
 	c.init(4,4);
 
-	matrix::mul(a,b,c);
+	matrix<float>::mul(a,b,c);
 
-	matrix::print(c);
+	matrix<float>::print(c);
 	std::cout<<"----"<<std::endl;
 
 	d.init(1,4);
 
 	d.xy(0,0)=5; d.xy(0,1)=6; d.xy(0,2)=7; d.xy(0,3)=8;
 
-	matrix::print(d);
+	matrix<float>::print(d);
 	std::cout<<"xxxx"<<std::endl;
 
-	matrix::print(b);
+	matrix<float>::print(b);
 	std::cout<<"----"<<std::endl;
 
 	e.init(1,4);
 
-	matrix::mul(d,b,e);
+	matrix<float>::mul(d,b,e);
 
-	matrix::print(e);
+	matrix<float>::print(e);
 	std::cout<<"----"<<std::endl;
 
 	c.init(1,2);
 
 	c.xy(0,0)=5; c.xy(0,1)=6;
 
-	matrix::print(c);
+	matrix<float>::print(c);
 	std::cout<<"xxxx"<<std::endl;
 
 	d.init(2,2);
@@ -144,31 +148,31 @@ int main(void)
 	d.xy(0,0)=1; d.xy(0,1)=2;
 	d.xy(1,0)=3; d.xy(1,1)=4;
 
-	matrix::print(d);
+	matrix<float>::print(d);
 	std::cout<<"----"<<std::endl;
 
 	e.init(1,2);
 
-	matrix::mul(c,d,e);
+	matrix<float>::mul(c,d,e);
 
-	matrix::print(e);
+	matrix<float>::print(e);
 	std::cout<<"----"<<std::endl;
 
-	matrix::print(d);
+	matrix<float>::print(d);
 	std::cout<<"xxxx"<<std::endl;
 
 	c.init(2,1);
 
 	c.xy(0,0)=5; c.xy(1,0)=6;
 
-	matrix::print(c);
+	matrix<float>::print(c);
 	std::cout<<"----"<<std::endl;
 
 	e.init(2,1);
 
-	matrix::mul(d,c,e);
+	matrix<float>::mul(d,c,e);
 
-	matrix::print(e);
+	matrix<float>::print(e);
 	std::cout<<"----"<<std::endl;
 
 }

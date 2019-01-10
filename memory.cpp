@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "MEMORY.H"
+#include "memory.h"
 
 #ifdef __BORLANDC__
 #include <dos.h>
