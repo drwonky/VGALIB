@@ -21,7 +21,7 @@ protected:
 public:
 	matrix() { _rows=0; _cols=0; _matrix = NULL; }
 	~matrix() { if (_matrix) delete[] _matrix; }
-	matrix(int rows, int cols) { init(rows,cols); }
+	matrix(int rows, int cols) { _matrix = NULL; init(rows,cols); }
 	matrix(const matrix& copy) : _rows(copy._rows), _cols(copy._cols) { _matrix = new matrix_t[_rows*_cols]; memcpy(_matrix,copy._matrix,_rows*_cols*sizeof(matrix_t)); }
 	matrix& operator=(const matrix& copy) { if (this == &copy) return *this; _rows=copy._rows; _cols=copy._cols; _matrix = new matrix_t[_rows*_cols]; memcpy(_matrix,copy._matrix,_rows*_cols*sizeof(matrix_t)); return *this; }
 

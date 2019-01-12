@@ -17,6 +17,8 @@
 using namespace std;
 #endif
 
+#include <math.h>
+
 template <class matrix_t>
 void matrix<matrix_t>::mul(matrix& a, matrix& b, matrix& c)
 {
@@ -77,11 +79,12 @@ template <class matrix_t>
 void matrix<matrix_t>::print(matrix& m)
 {
 	for(int y=0;y<m._rows;y++) {
-		cout<<"[";
+//		cout<<"[";
 		for(int x=0;x<m._cols;x++) {
 			cout << setw(5) << m._matrix[y*m._cols+x] << " ";
 		}
-		cout<<"]"<<endl;
+//		cout<<"]"<<endl;
+		cout<<endl;
 	}
 }
 
@@ -178,6 +181,48 @@ int main(void)
 	matrix<float>::print(e);
 	cout<<"----"<<endl;
 
+	matrix<float> yshear(2,2);
+	matrix<float> xshear(2,2);
+
+	float angle = 45*3.14159f/180;
+
+	yshear.xy(0,0)=1; //X = X
+	yshear.xy(0,1)=tan(angle/2); // X = X * tan(angle/2)
+	yshear.xy(1,0)=0; //Y = 0
+	yshear.xy(1,1)=1; //Y = Y
+
+	cout<<"yshear matrix:"<<endl;
+	matrix<float>::print(yshear);
+
+	xshear.xy(0,0)=1; // X = X;
+	xshear.xy(0,1)=0; // X = 0
+	xshear.xy(1,0)=-sin(angle); // Y = Y * -sin(angle);
+	xshear.xy(1,1)=1; // Y = Y;
+
+	cout<<"xshear matrix:"<<endl;
+	matrix<float>::print(xshear);
+
+	matrix<float> coords(1,2);
+	matrix<float> result(1,2);
+	matrix<float> result1(1,2);
+
+	for(int y=0; y<5; y++) {
+		for(int x=0; x<5; x++) {
+			coords[0]=x;
+			coords[1]=y;
+			matrix<float>::mul(coords,yshear,result);
+//			cout<<x<<" "<<y<<" ";
+//			matrix<float>::print(result);
+			matrix<float>::mul(result,xshear,result1);
+//			cout<<x<<" "<<y<<" ";
+//			matrix<float>::print(result1);
+			matrix<float>::mul(result1,yshear,result);
+
+			//cout<<"x:"<<x<<" y:"<<y<<" ";
+//			cout<<x<<" "<<y<<" ";
+			matrix<float>::print(result);
+		}
+	}
 	return 0;
 }
 
