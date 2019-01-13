@@ -25,7 +25,7 @@ vtext::~vtext()
 {
 }
 
-bool vtext::drawtext(image& img, char *string, unsigned char color)
+bool vtext::drawtext(image& img, const char *string, unsigned char color)
 {
 	int width,height;
 	int slen,x,y,x_cursor,y_cursor;

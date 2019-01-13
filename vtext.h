@@ -13,6 +13,6 @@ vtext();
 ~vtext();
 vtext(int width, int height, unsigned char background);
 
-bool drawtext(image& img, char *string, unsigned char color);
+bool drawtext(image& img, const char *string, unsigned char color);
 };
 

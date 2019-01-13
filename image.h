@@ -3,12 +3,6 @@
 
 #include "types.h"
 
-typedef struct { 
-unsigned char r; 
-unsigned char g; 
-unsigned char b; 
-} img_pal;
-
 #include "palettes.h"
 
 class image {
@@ -19,9 +13,9 @@ protected:
 unsigned int w;
 unsigned int h;
 unsigned char bg;
-int mpalette_size;
+int _palette_size;
 
-img_pal *mpalette;
+palette::pal_t *_palette;
 
 public:
 image& operator = (const image& img);
@@ -31,16 +25,17 @@ image(unsigned int width, unsigned int height);
 image(unsigned int width, unsigned int height, unsigned char background);
 ~image();
 void free(void);
-img_pal *palette(void) const { return mpalette; }
-int palette_size(void) const { return mpalette_size; }
+palette::pal_t *getpalette(void) const { return _palette; }
+int palette_size(void) const { return _palette_size; }
 bool copypalette(const image& img);
-void copypalette(img_pal *p);
-bool setpalette(pal_type pal);
+void copypalette(palette::pal_t *p);
+bool setpalette(palette::pal_type pal);
 bool allocate(void);
+ptr_t getbuffer(void) { return buffer; };
 bool size(unsigned int width, unsigned int height);
-unsigned char lookuppalentry(img_pal *p);
-unsigned char findnearestpalentry(img_pal *p);
-img_pal getpalentry(int i);
+unsigned char lookuppalentry(palette::pal_t *p);
+unsigned char findnearestpalentry(palette::pal_t *p);
+palette::pal_t getpalentry(int i);
 void setbg(unsigned char background);
 unsigned char getbg(void);
 unsigned int width(void);
@@ -62,8 +57,8 @@ image& scale(int width, int height);
 void scale(image& img);
 void printhex(void);
 void dumppalette(void);
-int32_t wcolordist(img_pal *a, img_pal *b);
-int32_t colordist(img_pal *a, img_pal *b);
+int32_t wcolordist(palette::pal_t *a, palette::pal_t *b);
+int32_t colordist(palette::pal_t *a, palette::pal_t *b);
 
 };
 

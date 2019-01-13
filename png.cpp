@@ -127,7 +127,7 @@ bool png::allocate_img_buffer(void)
 	return false;
 }
 
-bool png::load(char *file)
+bool png::load(const char *file)
 {
 	buffer = new char[BUFSIZE];
 
@@ -418,7 +418,7 @@ bool png::convert2image(image& img)
 	int x,y,i;
 	unsigned char *pemap;
 	unsigned char p;
-	img_pal ip;
+	palette::pal_t ip;
 
 	if (!img.size(width,height))
 		return false;
@@ -480,7 +480,7 @@ int main(int argc, char *argv[])
 	png p;
 	image i;
 
-	i.setpalette(CGA_PAL);
+	i.setpalette(palette::CGA_PAL);
 	p.load(argv[1]);
 	p.convert2image(i);
 

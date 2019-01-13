@@ -151,64 +151,66 @@ unsigned char C:1;
 unsigned char D:1;
 } png_1bpp;
 
-class png {
+class png
+{
 protected:
-union { // Create a bunch of aliases to make buffer parsing easier
-char *buffer;
-png_chunk *chunk;
-png_IHDR *IHDR;
-png_PLTE *PLTE;
-png_IDAT *IDAT;
-png_IEND *IEND;
-png_tRNS *tRNS;
-png_gAMA *gAMA;
-png_cHRM *cHRM;
-png_sRGB *sRGB;
-png_tEXt *tEXt;
-png_bKGD *bKGD;
-png_pHYs *pHYs;
-png_sBIT *sBIT;
-};
+	union
+	{ // Create a bunch of aliases to make buffer parsing easier
+		char *buffer;
+		png_chunk *chunk;
+		png_IHDR *IHDR;
+		png_PLTE *PLTE;
+		png_IDAT *IDAT;
+		png_IEND *IEND;
+		png_tRNS *tRNS;
+		png_gAMA *gAMA;
+		png_cHRM *cHRM;
+		png_sRGB *sRGB;
+		png_tEXt *tEXt;
+		png_bKGD *bKGD;
+		png_pHYs *pHYs;
+		png_sBIT *sBIT;
+	};
 
 public:
-unsigned char *image_buffer; // Raw inflate() output
+	unsigned char *image_buffer; // Raw inflate() output
 
-int32_t width;
-int32_t height;
-char depth;
-col_type colors;
-char compress;
-char interlace;
-int32_t crc;
-int32_t len;
-int	uncompressed_len;
-int	png_buf_size;
-int scanline_size;
+	int32_t width;
+	int32_t height;
+	char depth;
+	col_type colors;
+	char compress;
+	char interlace;
+	int32_t crc;
+	int32_t len;
+	int uncompressed_len;
+	int png_buf_size;
+	int scanline_size;
 
-uint32_t ppu_x;
-uint32_t ppu_y;
-char unit;
+	uint32_t ppu_x;
+	uint32_t ppu_y;
+	char unit;
 
-png_pal_entry *pal;
-int pal_size;
+	png_pal_entry *pal;
+	int pal_size;
 
-png_bgtrns *trns;
-int trns_size;
+	png_bgtrns *trns;
+	int trns_size;
 
-png_bgtrns bg;
+	png_bgtrns bg;
 
 private:
-png_blk_type png_block_name(png_chunk *chunk);
-void printhex(unsigned char *buf);
-bool allocate_img_buffer(void);
-int bytes_per_scanline(void);
+	png_blk_type png_block_name(png_chunk *chunk);
+	void printhex(unsigned char *buf);
+	bool allocate_img_buffer(void);
+	int bytes_per_scanline(void);
 
 public:
-png(void);
-~png(void);
-bool load(char *file);
-bool convert2image(image& img);
-void free(void);
+	png(void);
+	~png(void);
+	bool load(const char *file);
+	bool convert2image(image& img);
+	void free(void);
 };
 
 #endif

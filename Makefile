@@ -1,16 +1,16 @@
 BCC = bcc
 BCFLAGS = -a- -3 -Fs- -mh -v
 
-CFLAGS = -ggdb
+CFLAGS = -ggdb -std=c++98
 # -DTEST -DDEBUG
 
 CC = gcc
 CXX = g++
 
-SRC = png.cpp image.cpp memory.cpp vtext.cpp
-OBJS = png.o image.o memory.o vtext.o vga.o
+SRC = png.cpp image.cpp memory.cpp vtext.cpp palettes.cpp
+OBJS = png.o image.o memory.o vtext.o vga.o palettes.o
 BIN = png vga VGA.EXE
-SDLFLAGS = $(shell sdl-config --cflags --libs)
+SDLFLAGS = $(shell sdl2-config --cflags --libs)
 
 all:
 
@@ -47,7 +47,7 @@ matrix: matrix.cpp
 png: image.o memory.o png.o
 	$(CXX) $(CFLAGS) -o $@ $^ -lz
 
-vga: vga.o image.o memory.o png.o vtext.o
+vga: vga.o image.o memory.o png.o vtext.o palettes.o
 	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz
 	
 png.exe: png.cpp memory.obj image.cpp zlib.h zconf.h zlib_h.lib
@@ -152,3 +152,4 @@ vtext.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
 vtext.o: image.h types.h /usr/include/stdint.h /usr/include/bits/wchar.h
 vtext.o: /usr/include/bits/stdint-intn.h /usr/include/bits/stdint-uintn.h
 vtext.o: palettes.h vtext.h fonts.h
+palettes.o: palettes.h

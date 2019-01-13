@@ -6,6 +6,8 @@
 #include "image.h"
 #include "sincos.h"
 
+#include <iostream>
+
 image::image(const image& img)
 {
 	w=img.w;
@@ -37,7 +39,7 @@ image::~image()
 void image::free(void)
 {
 	if (buffer) delete[] buffer;
-	if (mpalette) delete[] mpalette;
+	if (_palette) delete[] _palette;
 }
 
 image::image(void)
@@ -46,16 +48,16 @@ image::image(void)
 	h=0;
 	bg=0;
 	buffer=NULL;
-	mpalette=NULL;
-	setpalette(VGA_PAL);
+	_palette=NULL;
+	setpalette(palette::VGA_PAL);
 }
 
 image::image(unsigned int width, unsigned int height)
 {
 	bg=0;
 	buffer=NULL;
-	mpalette=NULL;
-	setpalette(VGA_PAL);
+	_palette=NULL;
+	setpalette(palette::VGA_PAL);
 	size(width,height);
 }
 
@@ -63,38 +65,38 @@ image::image(unsigned int width, unsigned int height, unsigned char background)
 {
 	bg=background;
 	buffer=NULL;
-	mpalette=NULL;
-	setpalette(VGA_PAL);
+	_palette=NULL;
+	setpalette(palette::VGA_PAL);
 	size(width,height);
 }
 
 bool image::copypalette(const image& img)
 {
-	mpalette_size=img.palette_size();
-	if (mpalette) delete[] mpalette;
+	_palette_size=img.palette_size();
+	if (_palette) delete[] _palette;
 	
-	mpalette=new img_pal[mpalette_size];
+	_palette=new palette::pal_t[_palette_size];
 
-	if (mpalette == NULL) return false;
+	if (_palette == NULL) return false;
 
-	memcpy(mpalette,img.palette(),sizeof(img_pal)*mpalette_size);
+	memcpy(_palette,img.getpalette(),sizeof(palette::pal_t)*_palette_size);
 
 	return true;
 }
 
-void image::copypalette(img_pal *p)
+void image::copypalette(palette::pal_t *p)
 {
-        memcpy(mpalette,p,sizeof(img_pal)*mpalette_size);
+        memcpy(_palette,p,sizeof(palette::pal_t)*_palette_size);
 }
 
-bool image::setpalette(pal_type pal)
+bool image::setpalette(palette::pal_type pal)
 {
-	mpalette_size=palettes[pal].palette_entries;
-	mpalette=new img_pal[mpalette_size];
+	_palette_size=palette::palettes[pal].palette_entries;
+	_palette=new palette::pal_t[_palette_size];
 
-	if (mpalette == NULL) return false;
+	if (_palette == NULL) return false;
 
-	memcpy(mpalette,palettes[pal].pal,sizeof(img_pal)*mpalette_size);
+	memcpy(_palette,palette::palettes[pal].pal,sizeof(palette::pal_t)*_palette_size);
 
 	return true;
 }
@@ -105,7 +107,7 @@ bool image::allocate(void)
 
 	if(buffer) clear();
 
-	return (bool)(buffer != NULL && mpalette != NULL);
+	return (bool)(buffer != NULL && _palette != NULL);
 }
 
 bool image::size(unsigned int width, unsigned int height)
@@ -116,23 +118,23 @@ bool image::size(unsigned int width, unsigned int height)
 	return allocate();
 }
 
-unsigned char image::lookuppalentry(img_pal *p)
+unsigned char image::lookuppalentry(palette::pal_t *p)
 {
 	int i;
 
-	for (i=0; i<mpalette_size; i++) 
-		if (mpalette[i].r == p->r &&
-			mpalette[i].g == p->g &&
-			mpalette[i].b == p->b) {
-				//printf("pal entry %d %d %d found at %d %02x\n",mpalette[i].r,mpalette[i].g,mpalette[i].b,i,i);
+	for (i=0; i<_palette_size; i++)
+		if (_palette[i].r == p->r &&
+			_palette[i].g == p->g &&
+			_palette[i].b == p->b) {
+				//printf("pal entry %d %d %d found at %d %02x\n",_palette[i].r,_palette[i].g,_palette[i].b,i,i);
 				return i;
 			}
 
-	return mpalette_size-1;
+	return _palette_size-1;
 }
 
 // weighted squares color distance calculation
-int32_t image::wcolordist(img_pal *a, img_pal *b)
+int32_t image::wcolordist(palette::pal_t *a, palette::pal_t *b)
 {
 	int32_t R,G,B;
 
@@ -143,7 +145,7 @@ int32_t image::wcolordist(img_pal *a, img_pal *b)
 }
 
 // squares color distance calculation
-int32_t image::colordist(img_pal *a, img_pal *b)
+int32_t image::colordist(palette::pal_t *a, palette::pal_t *b)
 {
 	int32_t R,G,B;
 
@@ -154,7 +156,7 @@ int32_t image::colordist(img_pal *a, img_pal *b)
 }
 
 // find closest matching color in image palette
-unsigned char image::findnearestpalentry(img_pal *p)
+unsigned char image::findnearestpalentry(palette::pal_t *p)
 {
 	int i;
 	unsigned char lowindex=0;
@@ -162,8 +164,8 @@ unsigned char image::findnearestpalentry(img_pal *p)
 
 	lowdist=0x2fa03; // max possible color distance	
 
-	for (i=0; i<mpalette_size; i++) {
-		distance=wcolordist(p,&mpalette[i]);
+	for (i=0; i<_palette_size; i++) {
+		distance=wcolordist(p,&_palette[i]);
 
 		if (distance < lowdist) {  // sort result
 			lowindex=i;
@@ -174,9 +176,9 @@ unsigned char image::findnearestpalentry(img_pal *p)
 	return lowindex;
 }
 
-img_pal image::getpalentry(int i)
+palette::pal_t image::getpalentry(int i)
 {
-	return (img_pal)mpalette[i];
+	return (palette::pal_t)_palette[i];
 }
 
 void image::setbg(unsigned char background)
@@ -216,12 +218,12 @@ void image::setpixel(unsigned int x, unsigned int y)
 	setpixel(x,y,bg);
 }
 
-void image::setpixel(unsigned int x, unsigned int y, unsigned char color)
+inline void image::setpixel(unsigned int x, unsigned int y, unsigned char color)
 {
 	buffer[y*w+x]=color;
 }
 
-unsigned char image::getpixel(unsigned int x, unsigned int y)
+inline unsigned char image::getpixel(unsigned int x, unsigned int y)
 {
 	return buffer[y*w+x];
 }
@@ -458,7 +460,7 @@ void image::scale(image& dest, int width, int height)
 	int x,y;
 
 	dest.bg=bg;
-	dest.copypalette(mpalette);
+	dest.copypalette(_palette);
 
 	for (y=0;y<height;y++) {
 		for (x=0;x<width;x++) {
@@ -473,7 +475,6 @@ image& image::scale(int width, int height)
 
 	scale(*ret,width,height);
 
-	ret->copypalette(mpalette);
 	ret->bg=bg;
 
 	return *ret;
@@ -485,11 +486,12 @@ void image::scale(image& img)
 	int iw=img.width();
 	int ih=img.height();
 	bg=img.getbg();
-	copypalette(img.palette());
 
 	for (y=0;y<h;y++) {
 		for (x=0;x<w;x++) {
-			setpixel(x,y,img.getpixel(x*iw/w,y*ih/h));
+//			std::cout<<"x "<<x<<" sx "<<sx<<" y "<<y<<" sy "<<sy<<std::endl;
+			buffer[y*w+x]=img.buffer[y*ih/h*iw+x*iw/w];
+//			setpixel(x,y,img.getpixel(x*iw/w,y*ih/h));
 		}
 	}
 }
@@ -519,8 +521,8 @@ void image::dumppalette(void)
 {
 	int i;
 
-	for (i=0;i<mpalette_size;i++) {
-		printf("%d: %02x %02x %02x\n",i,mpalette[i].r,mpalette[i].g,mpalette[i].b);
+	for (i=0;i<_palette_size;i++) {
+		printf("%d: %02x %02x %02x\n",i,_palette[i].r,_palette[i].g,_palette[i].b);
 	}
 }
 
