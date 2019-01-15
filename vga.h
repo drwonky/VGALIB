@@ -124,7 +124,7 @@ unsigned char far *allocate_screen_buffer();
 void copy_buffer(unsigned char *src);
 void copyto(unsigned int x, unsigned int y, unsigned int x1, unsigned int y1, unsigned int w, unsigned int h);
 void drawbox(int x,int y,int w,int h,unsigned char color);
-void drawimage(int x, int y, image far *img);
+void drawimage(int x, int y, image& img);
 void drawsprite(int x, int y, image& img);
 void drawsprite(int x, int y, image& img, unsigned char mask);
 void syncsprites(void);

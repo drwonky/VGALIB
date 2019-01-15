@@ -1,14 +1,14 @@
 BCC = bcc
 BCFLAGS = -a- -3 -Fs- -mh -v
 
-CFLAGS = -ggdb -std=c++98
+CFLAGS = -ggdb -std=c++98 
 # -DTEST -DDEBUG
 
 CC = gcc
 CXX = g++
 
 SRC = png.cpp image.cpp memory.cpp vtext.cpp palettes.cpp
-OBJS = png.o image.o memory.o vtext.o vga.o palettes.o
+OBJS = png.o pngtest.o image.o memory.o vtext.o vga.o palettes.o
 BIN = png vga VGA.EXE
 SDLFLAGS = $(shell sdl2-config --cflags --libs)
 
@@ -38,14 +38,14 @@ image.obj: image.cpp
 vga.obj: vga.cpp
 	$(BCC) $(BCFLAGS) -B -c vga.cpp
 	
-#png.o: png.cpp
-#	$(CXX) $(CFLAGS) -DTEST -DDEBUG -c -o $@ $^
+pngtest.o: png.cpp
+	$(CXX) $(CFLAGS) -DTEST -DDEBUG -c -o $@ $^
 
 matrix: matrix.cpp
 	$(CXX) $(CFLAGS) -DTEST -o $@ $^
 
-png: image.o memory.o png.o
-	$(CXX) $(CFLAGS) -o $@ $^ -lz
+png: image.o memory.o pngtest.o palettes.o
+	$(CXX) $(CFLAGS) -DTEST -DDEBUG -o $@ $^ -lz
 
 vga: vga.o image.o memory.o png.o vtext.o palettes.o
 	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz

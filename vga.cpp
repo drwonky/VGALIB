@@ -61,10 +61,7 @@ vga::vga(void)
 
 	if (!SDLonce) {
 		SDLonce=true;
-		SDL_Init(SDL_INIT_VIDEO);
-//		SDL_GL_SetSwapInterval(1);
-		SDL_PumpEvents();
-		SDL_FlushEvents(SDL_FIRSTEVENT,SDL_LASTEVENT);
+		SDL_Init(SDL_INIT_VIDEO|SDL_INIT_EVENTS);
 	}
 
 	_offscreen=NULL;
@@ -651,12 +648,12 @@ void vga::drawbox(int x,int y,int w,int h,unsigned char color)
 	}
 }
 
-void vga::drawimage(int x, int y, image far *img)
+void vga::drawimage(int x, int y, image& img)
 {
 	unsigned int rem,dest,cnt,w,h,iw;
 
-	iw=w=img->width();
-	h=img->height();
+	iw=w=img.width();
+	h=img.height();
 
 	if (x>_width-1 || y>_height-1 || x<0 || y<0) return;
 
@@ -666,7 +663,7 @@ void vga::drawimage(int x, int y, image far *img)
 	cnt=h;
 	rem=0;
 	while(cnt) {
-		memory::fast_memcpy(&_os_buffer[dest],&img->buffer[rem],w);
+		memory::fast_memcpy(&_os_buffer[dest],&img.buffer[rem],w);
 		dest+=_row_bytes;
 		rem+=iw;
 		cnt--;
@@ -754,7 +751,7 @@ bool vga::kbhit(void)
 		switch (_event.type) {
 		case SDL_QUIT:
 		case SDL_KEYDOWN:
-			std::cout<<"caught event "<<_event.type<<std::endl;
+			std::cout<<"caught event "<<std::hex<<_event.type<<" keysym "<<_event.key.keysym.sym<<"("<<std::dec<<_event.key.keysym.sym<<")"<<std::endl;
 			return true;
 			break;
 		}
@@ -764,7 +761,7 @@ bool vga::kbhit(void)
 
 char vga::getch(void)
 {
-	if (SDL_WaitEvent(&_event)) {
+	while (SDL_WaitEvent(&_event)) {
 		/* an event was found */
 		switch (_event.type) {
 		/* close button clicked */
@@ -793,8 +790,6 @@ int main(void)
 	png mariopng;
 	image mario;
 
-	w=20;
-	h=20;
 	dx=1;
 	dy=1;
 	x=0;
@@ -802,17 +797,23 @@ int main(void)
 
 	printf("Starting...\n");
 
-	display.graphmode(SDLX16);
+	display.graphmode(SDLVGALO);
 	display.initsprites();
 	display.cls();
+	display.setpalette(palette::RGB_PAL);
 
-	mariopng.load("mario16.png");
+	mariopng.load("ladylrgb.png");
 
-	mario.setpalette(palette::CGA_PAL);
+	w=mariopng.width();
+	h=mariopng.height();
+
+	mario.setpalette(palette::RGB_PAL);
+	mariopng.filter();
 	mariopng.convert2image(mario);
+	mario.setbg(254);
 	mariopng.free();
 
-//	mario.printhex();
+	mario.printhex();
 	w=mario.width();
 	h=mario.height();
 
@@ -821,10 +822,10 @@ int main(void)
 	image boxd(w*2,h*2);
 	image boxe(w/2,h/2);
 	image mytext;
-	mytext.setpalette(palette::CGA_PAL);
+	mytext.setpalette(palette::RGB_PAL);
 
 	vtext text(display.width(),display.height(),0);
-	text.drawtext(mytext,"mario",7);
+	text.drawtext(mytext,"GTA",7);
 
 	box.drawbox(5,5,w-11,h-11,color);
 	box.drawbox(6,6,w-13,h-13,color+8);
@@ -848,11 +849,11 @@ int main(void)
 //	display.drawbox(x+3,y+3,w-6,h-6,color+2);
 	display.syncsprites();
 	//display.drawsprite(x,y,box);
-	display.drawsprite(x,y,mario);
+	display.drawsprite(x,y,mario,254);
 	display.update();
 	color+=1;
 
-//	display.getch();
+	display.getch();
 
 	boxc=mario;
 	boxd.copypalette(boxc);
@@ -862,7 +863,7 @@ int main(void)
 
 	display.drawsprite(x,y,mytext);
 
-	while(!display.kbhit() && c!=27) {
+	do {
 		display.syncsprites();
 //		display.writef(37,0,7,"rot %d\n",rot);
 //		display.writef(40,24,7,"x %3d y %3d, x1 %3d y1 %3d, w %2d h %2d\n",x,y,x+dx,y+dy,w,h);
@@ -903,7 +904,7 @@ int main(void)
 		}
 		if (color > display.colors) color=1;
 
-	}
+	} while(!display.kbhit() && c!=27);
 
 //	display.getch();
 

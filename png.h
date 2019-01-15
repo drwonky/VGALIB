@@ -32,9 +32,9 @@ typedef struct {
 } png_IHDR;
 
 typedef struct {
-		unsigned char red;
-		unsigned char green;
-		unsigned char blue;
+		unsigned char r;
+		unsigned char g;
+		unsigned char b;
 } png_pal_entry;
 
 typedef struct {
@@ -156,8 +156,8 @@ class png
 protected:
 	union
 	{ // Create a bunch of aliases to make buffer parsing easier
-		char *buffer;
-		png_chunk *chunk;
+		char *_buffer;
+		png_chunk *_chunk;
 		png_IHDR *IHDR;
 		png_PLTE *PLTE;
 		png_IDAT *IDAT;
@@ -173,42 +173,47 @@ protected:
 	};
 
 public:
-	unsigned char *image_buffer; // Raw inflate() output
+	unsigned char *_image_buffer; // Raw inflate() output
 
-	int32_t width;
-	int32_t height;
-	char depth;
-	col_type colors;
-	char compress;
-	char interlace;
-	int32_t crc;
-	int32_t len;
-	int uncompressed_len;
-	int png_buf_size;
-	int scanline_size;
+	int32_t _width;
+	int32_t _height;
+	char _depth;
+	col_type _colors;
+	char _compress;
+	char _interlace;
+	int32_t _crc;
+	int32_t _len;
+	int _uncompressed_len;
+	int _png_buf_size;
+	int _scanline_size;
+	int _bpp;
 
-	uint32_t ppu_x;
-	uint32_t ppu_y;
-	char unit;
+	uint32_t _ppu_x;
+	uint32_t _ppu_y;
+	char _unit;
 
-	png_pal_entry *pal;
-	int pal_size;
+	png_pal_entry *_pal;
+	int _pal_size;
 
-	png_bgtrns *trns;
-	int trns_size;
+	png_bgtrns *_trns;
+	int _trns_size;
 
-	png_bgtrns bg;
+	png_bgtrns _bg;
 
 private:
 	png_blk_type png_block_name(png_chunk *chunk);
 	void printhex(unsigned char *buf);
 	bool allocate_img_buffer(void);
 	int bytes_per_scanline(void);
+	int paeth(unsigned char a, unsigned char b, unsigned char c);
 
 public:
 	png(void);
 	~png(void);
+	int32_t width(void) { return _width; }
+	int32_t height(void) { return _height; }
 	bool load(const char *file);
+	void filter(void);
 	bool convert2image(image& img);
 	void free(void);
 };
