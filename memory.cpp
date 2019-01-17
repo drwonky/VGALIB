@@ -7,7 +7,7 @@
 #include "string.h"
 #endif
 
-void memory::mask_memcpy(unsigned char far *dest, unsigned char far *src, size_t size, unsigned char mask)
+void memory::mask_memcpy(ptr_t dest, ptr_t src, size_t size, unsigned char mask)
 {
 
 #ifdef __BORLANDC__
@@ -38,7 +38,7 @@ nobytecopy:
 		}
 endbytecopy:
 #else
-	unsigned char *s,*p,*e;
+	ptr_t s,p,e;
 
 	p=dest;
 	s=src;
@@ -51,7 +51,7 @@ endbytecopy:
 #endif
 }
 
-void memory::fast_memcpy(unsigned char far *dest, unsigned char far *src, size_t size)
+void memory::fast_memcpy(ptr_t dest, ptr_t src, size_t size)
 {
 
 #ifdef __BORLANDC__
@@ -126,7 +126,7 @@ post_end:
 
 }
 
-void memory::blit(unsigned char far *dest, unsigned char far *src, size_t size)
+void memory::blit(ptr_t dest, ptr_t src, size_t size)
 {
 #ifdef __BORLANDC__
 		_DI=FP_OFF(dest);

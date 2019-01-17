@@ -6,9 +6,9 @@
 class memory {
 
 public:
-static void mask_memcpy(unsigned char far *dest, unsigned char far *src, size_t size, unsigned char mask);
-static void fast_memcpy(unsigned char far *dest, unsigned char far *src, size_t size);
-static void blit(unsigned char far *dest, unsigned char far *src, size_t size);
+static void mask_memcpy(ptr_t dest, ptr_t src, size_t size, unsigned char mask);
+static void fast_memcpy(ptr_t dest, ptr_t src, size_t size);
+static void blit(ptr_t dest, ptr_t src, size_t size);
 
 };
 

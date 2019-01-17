@@ -21,6 +21,17 @@ using namespace std;
 
 #define BUFSIZE 8192
 
+const char *png::_err_messages[] = {
+"None",
+"Error opening file",
+"Bad PNG header (corrupt or not PNG)",
+"ZLIB error",
+"Error reading file",
+"Chunk size (other than IDAT) too big to fit in buffer",
+"Error allocating memory",
+"CRC error"
+};
+
 png::png(void)
 {
 
@@ -45,6 +56,7 @@ png::png(void)
 	_crc=0;
 	_png_buf_size=0;
 	_uncompressed_len=0;
+	_errno=NONE;
 
 }
 
@@ -145,6 +157,7 @@ bool png::load(const char *file)
 
 	if (!in) {
 		cerr << "error opening" << file << endl;
+		_errno = OPEN;
 		return false;
 	}
 
@@ -159,6 +172,7 @@ bool png::load(const char *file)
 
 	if (memcmp(_buffer,aPNG,sizeof(aPNG))) {
 		cerr << "PNG header match failure"<< endl;
+		_errno = HEADER;
 		return false;
 	} else {
 		debug(cout<<"Verified PNG header"<< endl;)
@@ -170,6 +184,7 @@ bool png::load(const char *file)
 	uint32_t bytesread=0; // Tally of all bytes read in iDAT
 	uint32_t zbytesread; // Tally of how much data inflate()d
 	uint32_t zavail; // Amount of space left in _image_buffer
+	uint32_t crc;
 	int palcnt; // Iterator for palette/trans handling
 	png_pal_entry *pe; // Palette iterator
 	png_bgtrns *pt; // Transparent palette iterator
@@ -190,6 +205,7 @@ bool png::load(const char *file)
 	ret = inflateInit(&z);
 	if (ret != Z_OK) {
 		cerr<<"Error initializing zlib inflate!"<<endl;
+		_errno = ZLIB;
 		return false;
 	}
 
@@ -198,24 +214,31 @@ bool png::load(const char *file)
 
 		if (!in) {
 			cerr << "error reading file"<<endl;
+			_errno = READ;
 			return false;
 		}
 
 		_chunk->len = bswap32(_chunk->len);
 
+		memcpy(cn,&_chunk->type,4);
+
+		debug(cout<<"chunk type "<<cn<<" len: "<<_chunk->len<<endl;)
+
 		type = png_block_name(_chunk);
+
+		crc = crc32(0L, Z_NULL, 0);  // courtesy of zlib.h
+		crc = (uint32_t) crc32(crc, (const unsigned char *)_buffer+sizeof(_chunk->len),sizeof(_chunk->type)); // CRC of chunk header, not including len
 
 		if (type != eIDAT) {
 			if (_chunk->len > BUFSIZE) {
 				cerr << "chunk len " << _chunk->len << " exceeds " << BUFSIZE<< endl;
+				_errno = CHUNK_SIZE;
 				return false;
 			}
 			in.read(_buffer+sizeof(png_chunk),_chunk->len);
+			crc = (uint32_t) crc32(crc, (const unsigned char *)_buffer+sizeof(png_chunk), _chunk->len); // CRC of chunk data, not including chunk header
 		}
 
-		memcpy(cn,&_chunk->type,4);
-		
-		debug(cout<<"chunk type "<<cn<<endl;)
 		switch(type) {
 			case eIHDR:
 				_width=bswap32(IHDR->width);
@@ -227,11 +250,8 @@ bool png::load(const char *file)
 
 				switch (_colors) {
 					case GRAY:
-						_bpp=_depth < 8 ? 1 : _depth/8;
-						break;
 					case INDEXED:
 						_bpp=_depth < 8 ? 1 : _depth/8;
-						_bpp*=3;
 						break;
 					case RGB:
 						_bpp=_depth/8 * 3;
@@ -239,7 +259,7 @@ bool png::load(const char *file)
 					case GRAYA:
 					case RGBA:
 						_bpp=_depth/8 * 4;
-					continue;
+						break;
 				}
 
 				bytesread=0;
@@ -247,6 +267,7 @@ bool png::load(const char *file)
 				if (allocate_img_buffer() == false) {
 					cerr << "Error allocating compress buffer"<<endl;
 					(void)inflateEnd(&z);
+					_errno = BADALLOC;
 					return false;
 				}
 
@@ -265,6 +286,7 @@ bool png::load(const char *file)
 				if (!_pal) {
 					cerr<<"Failed to allocate "<<palcnt<<" palette entries"<< endl;
 					(void)inflateEnd(&z);
+					_errno = BADALLOC;
 					return false;
 				}
 
@@ -286,9 +308,12 @@ bool png::load(const char *file)
 				while(bytecount) {
 					in.read(_buffer,bytecount<BUFSIZE ? bytecount : BUFSIZE);
 
+					crc = (uint32_t) crc32(crc, (const unsigned char *)_buffer,in.gcount());
+
 					if (!in) {
 						cerr<<"Error reading file"<<endl;
 						(void)inflateEnd(&z);
+						_errno = READ;
 						return false;
 					}
 
@@ -312,6 +337,7 @@ bool png::load(const char *file)
 					case Z_DATA_ERROR:
 						(void)inflateEnd(&z);
 						cerr<<"Inflate error "<<ret<<" "<<z.msg<<endl;
+						_errno = ZLIB;
 						return false;
 					}
 
@@ -333,7 +359,6 @@ bool png::load(const char *file)
 
 				(void)inflateEnd(&z);
 				debug(cout<<"Uncompressed len "<<_uncompressed_len<<endl;)
-				//printhex(_image_buffer);
 				
 				done=true;
 				break;
@@ -361,6 +386,7 @@ bool png::load(const char *file)
 				if (!_trns) {
 					cerr<<"Failed to allocate "<<_trns_size<<" palette entries"<< endl;
 					(void)inflateEnd(&z);
+					_errno = BADALLOC;
 					return false;
 				}
 
@@ -374,13 +400,12 @@ bool png::load(const char *file)
 						case INDEXED:
 							_trns[palcnt].ndx=pt->ndx;
 							break;
+						case GRAYA:
+						case RGBA:
 						case RGB:
 							_trns[palcnt].rgb.r=bswap16(pt->rgb.r);
 							_trns[palcnt].rgb.g=bswap16(pt->rgb.g);
 							_trns[palcnt].rgb.b=bswap16(pt->rgb.b);
-							break;
-						case GRAYA:
-						case RGBA:
 							break;
 					}
 					debug(cout<<"alpha "<<(int)_trns[palcnt].ndx<< endl;)
@@ -390,19 +415,19 @@ bool png::load(const char *file)
 				debug(cout<<"bKGD chunk "<<type<<" of size "<<_chunk->len<<endl;)
 				switch (_colors) {
 						case GRAY:
+							_bg.gray = bswap16(bKGD->bg.gray);
 							break;
 						case INDEXED:
 							memcpy(&_bg,&bKGD->bg,_chunk->len);
 							debug(cout<<"BG index is "<<(int)_bg.ndx<<endl;)
 							break;
 						case RGB:
+						case GRAYA:
+						case RGBA:
 							_bg.rgb.r=bswap16(bKGD->bg.rgb.r);
 							_bg.rgb.g=bswap16(bKGD->bg.rgb.g);
 							_bg.rgb.b=bswap16(bKGD->bg.rgb.b);
 							debug(cout<<"BG rgb is "<<(int)_bg.rgb.r<<" "<<(int)_bg.rgb.g<<" "<<(int)_bg.rgb.b<<endl;)
-							break;
-						case GRAYA:
-						case RGBA:
 							break;
 					}
 				break;
@@ -439,11 +464,22 @@ bool png::load(const char *file)
 				break;
 		}
 		in.read((char *)&_crc,sizeof(_crc));
+		_crc=bswap32(_crc);
+		if (_crc != crc) {
+			//CRC error has occurred
+			debug(cout<<"CRC error (read)"<<std::hex<<_crc<<" != (calc)"<<crc<<std::dec<<endl;)
+			in.close();
+			delete[] _buffer;
+			_buffer=NULL;
+			_errno = BADCRC;
+			return false;
+		}
 	} while(!done);
 
 	in.close();
 	delete[] _buffer;
 	_buffer=NULL;
+	filter(); // run final filter step
 	return true;
 }
 
@@ -462,23 +498,39 @@ int png::paeth(unsigned char a, unsigned char b, unsigned char c)
 		else return c;
 }
 
+// implements PNG filter decoding
 void png::filter(void)
 {
-	int x,y,b,ybytes;
+	int x,y,b;
 	unsigned char p,q,r,s,t;
 	unsigned char filt;
 	unsigned char *prior;
 
 	debug(cout<<"Bpp "<<_bpp<<endl;)
-	printhex(_image_buffer);
+//	printhex(_image_buffer);
 
-	ybytes=_uncompressed_len/_height;
+	b=_scanline_size+1; // the first byte of a scanline is the filter type byte, this must be figured into address calculation
 
-	b=bytes_per_scanline()+1;
-
+	/* PNG filters use the following nomenclature and rules:
+	 *
+	 * bpp = bytes per pixel, minimum of 1.  G = 1, GG = 2, RGB = 3, RGBA = 4, RRGGBB = 6, RRGGBBAA = 8
+	 *
+	 * Prior(x-bpp)--+   +---Prior(x)
+	 *               |   |
+	 * Filter type-v v   v
+	 * Scanline 0: F RGB RGB RGB RGB
+	 * Scanline 1: F RGB RGB RGB RGB
+	 *   Raw(x-bpp)--^   ^--Filt_name(x) aka Raw(x)
+	 *
+	 * For line 0, Prior(x) will always be zero
+	 * For RGB values in the first triple, Raw(x-bpp) and Prior(x-bpp) will always be zero, since they would shift off the beginning of the buffer.
+	 * RGB triples can be 8bit depth or 16bit depth, the algorithms work at the byte level and compare R to R, G to G, and B to B of adjacent pixels.
+	 * Grayscale can be a raw 1,2,4,8, or 16bit value, the algorithms assume a minimum of 1 byte per pixel.
+	 *
+	 */
 	x=0;
 	for (y=0;y<_height;y++) {
-		filt=_image_buffer[y*ybytes]; // filter byte is first byte in scanline
+		filt=_image_buffer[y*b]; // filter byte is first byte in scanline
 
 		debug(cout<<std::dec<<"line "<<y<<" Filter type "<<(int)filt<<endl;)
 		switch(filt) {
@@ -486,45 +538,45 @@ void png::filter(void)
 			continue;
 		case 1: //sub
 			for (x=1;x<b;x++) { // skip filter byte
-				q=x<_bpp+1? 0 :_image_buffer[(y*ybytes)+x-_bpp];
-				p=_image_buffer[(y*ybytes)+x];
+				q=x<_bpp+1? 0 :_image_buffer[(y*b)+x-_bpp];
+				p=_image_buffer[(y*b)+x];
 				r=p+q;
-				_image_buffer[(y*ybytes)+x]=p+q;
-				cout << "sub q "<<std::hex<<(int)q<<" p "<<(int)p<<" result "<<(int)r<<endl;
+				_image_buffer[(y*b)+x]=p+q;
+				debug(cout << "sub q "<<std::hex<<(int)q<<" p "<<(int)p<<" result "<<(int)r<<endl;)
 			}
 			break;
 		case 2: //up
 			for (x=1;x<b;x++) { // skip filter byte
-				q=_image_buffer[(y*ybytes)+x];
+				q=_image_buffer[(y*b)+x];
 				p= y==0 ? 0 : prior[x];
 				r=p+q;
-				_image_buffer[(y*ybytes)+x]=p+q;
-				cout << "up q "<<std::hex<<(int)q<<" p "<<(int)p<<" result "<<(int)r<<endl;
+				_image_buffer[(y*b)+x]=p+q;
+				debug(cout << "up q "<<std::hex<<(int)q<<" p "<<(int)p<<" result "<<(int)r<<endl;)
 			}
 			break;
 		case 3: //average
 			for (x=1;x<b;x++) { // skip filter byte
-				p=_image_buffer[(y*ybytes)+x];
+				p=_image_buffer[(y*b)+x];
 				q=y==0 ? 0 : prior[x];
-				r=x<_bpp+1? 0 :_image_buffer[(y*ybytes)+x-_bpp];
+				r=x<_bpp+1? 0 :_image_buffer[(y*b)+x-_bpp];
 				s=p+(r+q)/2;
-				_image_buffer[(y*ybytes)+x]=s;
-				cout << "avg p "<<std::hex<<(int)p<<" prior(x) "<<(int)q<<" raw(x-bpp) "<<(int)r<<" result "<<(int)s<<endl;
+				_image_buffer[(y*b)+x]=s;
+				debug(cout << "avg p "<<std::hex<<(int)p<<" prior(x) "<<(int)q<<" raw(x-bpp) "<<(int)r<<" result "<<(int)s<<endl;)
 			}
 			break;
 		case 4: //Paeth
 			for (x=1;x<b;x++) { // skip filter byte
-				q=x<_bpp+1 ? 0 : _image_buffer[(y*ybytes)+x-_bpp]; // left Raw(x-bpp)
+				q=x<_bpp+1 ? 0 : _image_buffer[(y*b)+x-_bpp]; // left Raw(x-bpp)
 				r=y==0 ? 0 :prior[x]; // upper prior(x)
 				s=x<_bpp+1 ? 0 : y==0 ? 0 : prior[x-_bpp]; // upper left  prior(x-bpp)
-				p=_image_buffer[(y*ybytes)+x]; // paeth(x)
+				p=_image_buffer[(y*b)+x]; // paeth(x)
 				t=(unsigned char)paeth(q,r,s);
-				_image_buffer[(y*ybytes)+x]=p+t;
-				cout << "paeth Raw(x-bpp) "<<std::hex<<(int)q<<" prior(x) "<<(int)r<<" prior(x-bpp) "<<(int)s<<" raw(x) "<<(int)p<<" paeth(q,r,s) "<<(int)t<<" result "<<(int)(_image_buffer[(y*ybytes)+x])<<endl;
+				_image_buffer[(y*b)+x]=p+t;
+				debug(cout << "paeth Raw(x-bpp) "<<std::hex<<(int)q<<" prior(x) "<<(int)r<<" prior(x-bpp) "<<(int)s<<" raw(x) "<<(int)p<<" paeth(q,r,s) "<<(int)t<<" result "<<(int)(_image_buffer[(y*b)+x])<<endl;)
 			}
 			break;
 		}
-		prior=&_image_buffer[y*ybytes];
+		prior=&_image_buffer[y*b];
 	}
 }
 
@@ -532,56 +584,141 @@ bool png::convert2image(image& img)
 {
 	int x,y,i,index;
 	unsigned char *pemap;
-	unsigned char p;
+	unsigned char p,shiftbits;
 
 	palette::pal_t ip;
-	palette::pal_t *pixel,ppixel;
+	palette::pal_t *pixel;
+	palette::pala_t *pixela;
+	short gray_pixel;
 
 	if (!img.size(_width,_height))
 		return false;
 
-	printhex(_image_buffer);
+//	printhex(_image_buffer);
+
+	bool small_image=(_width*_height<512*512) ? true : false;  // a bit of optimization to reduce the cost of quantizing colors of RGB images, the threshold tradeoff is 512x512
+
+	if (small_image) shiftbits=0; // We optimize the palette lookup by truncating 24bpp images to 18bbp to match VGA color space, no need to optimize if we have a small image
+	else shiftbits=2;
 
 	switch(_colors) {
+		case GRAYA:
 		case GRAY:
-			break;
-		case RGB:
+			debug(cout<<"Building pemap for "<<(int)_depth<<" bpp"<<endl;)
 			_pal_size=img.palette_size();
-			pemap = new unsigned char[64*64*64];
-			for (unsigned char x=0;x<64;x++) {
-				for (unsigned char y=0;y<64;y++) {
-					for (unsigned char z=0;z<64;z++) {
-						ip.r=x<<2;
-						ip.g=y<<2;
-						ip.b=z<<2;
-						index = x*64*64+y*64+z;
-						pemap[index]=img.findnearestpalentry(&ip);
+			pemap = new unsigned char[1<<_depth]; // Grayscale 1,2,4,8,16 bpp
+			for (unsigned int x=0;x<(1<<_depth);x++) {
+				// decimate 16bpp images, we can't show 64k shades of gray anyway
+				ip.r=_depth < 16 ? x : x>>8;
+				ip.g=_depth < 16 ? x : x>>8;
+				ip.b=_depth < 16 ? x : x>>8;
+				index = x;
+				pemap[index]=img.findnearestpalentry(&ip);
 //						cout <<"Index ["<<index<<"] = "<<(int)pemap[index]<<endl;
+			}
+
+			debug(cout<<"Built pemap "<<(1<<_depth)<<endl;)
+
+			img.setbg(pemap[_bg.gray]);
+
+			debug(cout<<"Set "<<(int)_bg.gray<<" as bg"<<endl;)
+			i=0;
+			for (y=0;y<_height;y++) {
+				for(x=0;x<_width;) {
+					switch (_depth) {
+					case 1:
+						p=_image_buffer[y*(_scanline_size+1)+1+(x/8)];
+						img._buffer[i+0]=pemap[(p>>8)];
+						img._buffer[i+1]=pemap[(p>>7&0x1)];
+						img._buffer[i+2]=pemap[(p>>6&0x1)];
+						img._buffer[i+3]=pemap[(p>>5&0x1)];
+						img._buffer[i+4]=pemap[(p>>4&0x1)];
+						img._buffer[i+5]=pemap[(p>>3&0x1)];
+						img._buffer[i+6]=pemap[(p>>2&0x1)];
+						img._buffer[i+7]=pemap[(p&0x1)];
+						i+=8; // oct increment output
+						x+=8;
+						break;
+					case 2:
+						p=_image_buffer[y*(_scanline_size+1)+1+(x/4)];
+						img._buffer[i]=pemap[(p>>6)];
+						img._buffer[i+1]=pemap[(p>>4&0x3)];
+						img._buffer[i+2]=pemap[(p>>2&0x3)];
+						img._buffer[i+3]=pemap[(p&0x3)];
+						i+=4; // quad increment output
+						x+=4;
+						break;
+					case 4:
+						p=_image_buffer[y*(_scanline_size+1)+1+(x/2)];
+						debug(printf("pel: %02x\n",p);)
+						img._buffer[i]=pemap[(p>>4)];
+						img._buffer[i+1]=pemap[(p&0xF)];
+						i+=2; // double increment output
+						x+=2;
+						break;
+					case 8:
+						p=_image_buffer[y*(_scanline_size+1)+1+x];
+						debug(printf("pel: %02x\n",p);)
+						img._buffer[i]=pemap[p];
+						x++;
+						i++;
+						break;
+					case 16:
+						gray_pixel=bswap16(_image_buffer[y*(_scanline_size+1)+1+(x*sizeof(short))]);
+						debug(printf("pel: %04x\n",gray_pixel);)
+						img._buffer[i]=pemap[gray_pixel];
+						x++;
+						i++;
+						break;
 					}
 				}
 			}
 
-			debug(cout<<"Built pemap 64x64x64"<<endl;)
+			delete[] pemap;
+			break;
+		case RGBA:
+			_pal_size=img.palette_size();
 
-			img.setbg(pemap[_bg.rgb.r>>2*64*64+_bg.rgb.g>>2*64+_bg.rgb.b>>2]);
+			if (!small_image) {
+				pemap = new unsigned char[64*64*64]; // VGA is 6+6+6 so this is a hack to convert truecolor to the VGA 18 bit color space
+				for (unsigned char x=0;x<64;x++) {
+					for (unsigned char y=0;y<64;y++) {
+						for (unsigned char z=0;z<64;z++) {
+							ip.r=x<<2;
+							ip.g=y<<2;
+							ip.b=z<<2;
+							index = x*64*64+y*64+z;
+							pemap[index]=img.findnearestpalentry(&ip);
+	//						cout <<"Index ["<<index<<"] = "<<(int)pemap[index]<<endl;
+						}
+					}
+				}
+
+				debug(cout<<"Built pemap 64x64x64"<<endl;)
+
+				img.setbg(pemap[_bg.rgb.r>>2*64*64+_bg.rgb.g>>2*64+_bg.rgb.b>>2]);
+				debug(cout<<"BG small pal entry: "<<(int)img.getbg()<<endl;)
+			} else {
+				ip.r=(unsigned char)_bg.rgb.r;
+				ip.g=(unsigned char)_bg.rgb.g;
+				ip.b=(unsigned char)_bg.rgb.b;
+				img.setbg(img.findnearestpalentry(&ip));
+				debug(cout<<"BG pal entry: "<<(int)img.getbg()<<endl;)
+			}
 
 			switch (_depth) {
 				case 8:
 					i=0;
 					for (y=0;y<_height;y++) {
 						for(x=0;x<_width;x++) {
-							pixel=(palette::pal_t *)&_image_buffer[y*(_scanline_size+1)+1+(x*sizeof(palette::pal_t))];
-							//debug(printf("pel: %02x\n",p);)
-							ppixel.r=pixel->r;
-							ppixel.g=pixel->g;
-							ppixel.b=pixel->b;
-							pixel->r=pixel->r>>2;
-							pixel->g=pixel->g>>2;
-							pixel->b=pixel->b>>2;
-							index=pixel->r*64*64+pixel->g*64+pixel->b;
-							if (y==32) cout<<"r "<<(int)pixel->r<<"("<<(int)ppixel.r<<") g "<<(int)pixel->g<<"("<<(int)ppixel.g<<") b "<<(int)pixel->b<<"("<<(int)ppixel.b<<") Index ["<<index<<"] = "<<(int)pemap[index]<<endl;
-							img.buffer[i]=pemap[index];
-							//debug(printf("buf[h]=%02x buf[l]=%02x\n",img.buffer[i],img.buffer[i+1]);)
+							pixela=(palette::pala_t *)&_image_buffer[y*(_scanline_size+1)+1+(x*sizeof(palette::pala_t))];
+							debug(printf("r: %02x g: %02x b: %02x a: %02x\n",pixela->r,pixela->g,pixela->b,pixela->a);)
+							pixela->r=pixela->r>>shiftbits;
+							pixela->g=pixela->g>>shiftbits;
+							pixela->b=pixela->b>>shiftbits;
+							pixel=(palette::pal_t *)pixela;
+							index=pixela->r*64*64+pixela->g*64+pixela->b;
+							img._buffer[i]=small_image ? img.findnearestpalentry(pixel) : pemap[index];
 							i++;
 						}
 					}
@@ -590,7 +727,66 @@ bool png::convert2image(image& img)
 					break;
 			}
 
-			delete[] pemap;
+			if (!small_image) delete[] pemap;
+			break;
+		case RGB:
+			_pal_size=img.palette_size();
+
+			if (!small_image) {
+				pemap = new unsigned char[64*64*64]; // VGA is 6+6+6 so this is a hack to convert truecolor to the VGA 18 bit color space
+				for (unsigned char x=0;x<64;x++) {
+					for (unsigned char y=0;y<64;y++) {
+						for (unsigned char z=0;z<64;z++) {
+							ip.r=x<<2;
+							ip.g=y<<2;
+							ip.b=z<<2;
+							index = x*64*64+y*64+z;
+							pemap[index]=img.findnearestpalentry(&ip);
+	//						cout <<"Index ["<<index<<"] = "<<(int)pemap[index]<<endl;
+						}
+					}
+				}
+
+				debug(cout<<"Built pemap 64x64x64"<<endl;)
+
+				img.setbg(pemap[_bg.rgb.r>>2*64*64+_bg.rgb.g>>2*64+_bg.rgb.b>>2]);
+				debug(cout<<"BG small pal entry: "<<(int)img.getbg()<<endl;)
+			} else {
+				ip.r=(unsigned char)_bg.rgb.r;
+				ip.g=(unsigned char)_bg.rgb.g;
+				ip.b=(unsigned char)_bg.rgb.b;
+				debug(cout<<"Raw bg rgb "<<(int)ip.r<<" "<<(int)ip.g<<" "<<(int)ip.b<<endl;)
+				img.setbg(img.findnearestpalentry(&ip));
+				debug(printf("raw pal %02x %02x %02x\n",(img.getpalette())[img.getbg()].r,(img.getpalette())[img.getbg()].g,(img.getpalette())[img.getbg()].b);)
+				debug(cout<<"BG pal entry: "<<(int)img.getbg()<<endl;)
+			}
+
+			switch (_depth) {
+				case 8:
+					debug(cout<<"Shiftbits: "<<shiftbits<<endl;)
+					i=0;
+					for (y=0;y<_height;y++) {
+						for(x=0;x<_width;x++) {
+							pixel=(palette::pal_t *)&_image_buffer[y*(_scanline_size+1)+1+(x*sizeof(palette::pal_t))];
+							debug(printf("r: %02x g: %02x b: %02x =>",pixel->r,pixel->g,pixel->b);)
+							//debug(printf("pel: %02x\n",p);)
+							pixel->r=pixel->r>>shiftbits;
+							pixel->g=pixel->g>>shiftbits;
+							pixel->b=pixel->b>>shiftbits;
+							debug(printf(" r: %02x g: %02x b: %02x => ",pixel->r,pixel->g,pixel->b);)
+							index=pixel->r*64*64+pixel->g*64+pixel->b;
+							img._buffer[i]=small_image ? img.findnearestpalentry(pixel) : pemap[index];
+							debug(printf("%d\n",(int)img._buffer[i]);)
+							debug(printf("raw pel %02x %02x %02x\n",(img.getpalette())[img._buffer[i]].r,(img.getpalette())[img._buffer[i]].g,(img.getpalette())[img._buffer[i]].b);)
+							i++;
+						}
+					}
+					break;
+				case 16:
+					break;
+			}
+
+			if (!small_image) delete[] pemap;
 			break;
 		case INDEXED:
 			pemap = new unsigned char[_pal_size];
@@ -613,9 +809,9 @@ bool png::convert2image(image& img)
 						for(x=0;x<_width/2;x++) {
 							p=_image_buffer[y*(_scanline_size+1)+1+x];
 							debug(printf("pel: %02x\n",p);)
-							img.buffer[i]=pemap[(p&0xF0)>>4];
-							img.buffer[i+1]=pemap[p&0x0F];
-							debug(printf("buf[h]=%02x buf[l]=%02x\n",img.buffer[i],img.buffer[i+1]);)
+							img._buffer[i]=pemap[(p&0xF0)>>4];
+							img._buffer[i+1]=pemap[p&0x0F];
+							debug(printf("buf[h]=%02x buf[l]=%02x\n",img._buffer[i],img._buffer[i+1]);)
 							i+=2;
 						}
 					}
@@ -626,8 +822,8 @@ bool png::convert2image(image& img)
 						for(x=0;x<_width;x++) {
 							p=_image_buffer[y*(_scanline_size+1)+1+x];
 							//debug(printf("pel: %02x\n",p);)
-							img.buffer[i]=pemap[p];
-							//debug(printf("buf[h]=%02x buf[l]=%02x\n",img.buffer[i],img.buffer[i+1]);)
+							img._buffer[i]=pemap[p];
+							//debug(printf("buf[h]=%02x buf[l]=%02x\n",img._buffer[i],img._buffer[i+1]);)
 							i++;
 						}
 					}
@@ -636,10 +832,6 @@ bool png::convert2image(image& img)
 
 			img.setbg(pemap[_bg.ndx]);
 			delete[] pemap;
-			break;
-		case RGBA:
-			break;
-		case GRAYA:
 			break;
 	}
 
@@ -653,8 +845,12 @@ int main(int argc, char *argv[])
 	image i;
 
 	i.setpalette(palette::RGB_PAL);
-	p.load(argv[1]);
-	p.filter();
+	cout<<"Loading..."<<argv[1]<<endl;
+	if (!p.load(argv[1])) {
+		cout<<"Error loading PNG: "<<p.errormsg()<<endl;
+		return 1;
+	}
+	cout<<"Converting..."<<endl;
 	p.convert2image(i);
 
 	debug(i.printhex();)

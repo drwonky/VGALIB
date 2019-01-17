@@ -86,6 +86,7 @@ enum { MONO, COLOR} card;
 unsigned char sprites;
 int _palette_size;
 palette::pal_t *_palette;
+palette::pal_type _cur_palette;
 
 public:
 unsigned char colors;
@@ -107,6 +108,7 @@ bool setup(void);
 void initsprites(void);
 void debuginfo(void);
 bool setpalette(palette::pal_type pal);
+palette::pal_type getpalette(void) { return _cur_palette; }
 bool sdlmode(Vgamode mode);
 bool graphmode(void);
 bool graphmode(Vgamode mode);

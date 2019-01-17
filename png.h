@@ -1,6 +1,15 @@
 #ifndef PNG_H
 #define PNG_H
 
+#ifdef __BORLANDC__
+#include <cstring.h>
+#else
+#include <string>
+using namespace std;
+#endif
+
+#include <errno.h>
+
 #include "image.h"
 
 enum png_blk_type { eIHDR, ePLTE, eIDAT, eIEND, etRNS, egAMA, ecHRM, etEXt, esRGB, ebKGD, epHYs, esBIT, etIME, eiTXt, eUND };
@@ -181,7 +190,7 @@ public:
 	col_type _colors;
 	char _compress;
 	char _interlace;
-	int32_t _crc;
+	uint32_t _crc;
 	int32_t _len;
 	int _uncompressed_len;
 	int _png_buf_size;
@@ -200,20 +209,37 @@ public:
 
 	png_bgtrns _bg;
 
+	enum png_errcodes { NONE,
+					OPEN,			// Error opening file
+					HEADER,			// Bad PNG header (corrupt or not PNG)
+					ZLIB, 			// ZLIB error
+					READ, 			// Error reading file
+					CHUNK_SIZE, 	// Chunk size (other than IDAT) too big to fit in buffer
+					BADALLOC, 		// Error allocating memory
+					BADCRC 			// CRC error
+	} _errno;
+
+	static const char *_err_messages[];
+
 private:
 	png_blk_type png_block_name(png_chunk *chunk);
 	void printhex(unsigned char *buf);
 	bool allocate_img_buffer(void);
 	int bytes_per_scanline(void);
 	int paeth(unsigned char a, unsigned char b, unsigned char c);
+	void filter(void);
 
 public:
 	png(void);
 	~png(void);
 	int32_t width(void) { return _width; }
 	int32_t height(void) { return _height; }
+	png_errcodes error(void) { return _errno; }
+	string errormsg(void) {
+			if (errno != 0) return string(_err_messages[_errno])+string(": ")+string(strerror(errno));
+			else return string(_err_messages[_errno]);
+	}
 	bool load(const char *file);
-	void filter(void);
 	bool convert2image(image& img);
 	void free(void);
 };

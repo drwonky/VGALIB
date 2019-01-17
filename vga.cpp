@@ -39,6 +39,7 @@ vga::vga(void)
 	_height=0;
 	_palette=NULL;
 	_palette_size=0;
+	_cur_palette=palette::NONE;
 	_row_bytes=0;
 	bpp=0;
 	Bpp=0;
@@ -151,6 +152,7 @@ bool vga::setup(void)
 bool vga::setpalette(palette::pal_type pal)
 {
 	_palette_size=palette::palettes[pal].palette_entries;
+	_cur_palette=pal;
 	_palette=new palette::pal_t[_palette_size];
 
 	if (_palette == NULL) return false;
@@ -233,15 +235,22 @@ bool vga::graphmode(Vgamode mode)
 {
 	switch (mode) {
 		case SDLVGALO:
+			setpalette(palette::VGA_PAL);
+			return sdlmode(mode);
 		case SDLX16:
+			setpalette(palette::CGA_PAL);
 			return sdlmode(mode);
 		case MDA:
 			return mdamode();
 		case TEXT:
 			return textmode();
 		case X16:
+			setpalette(palette::CGA_PAL);
 			if (card == MONO) return mdamode();
 			return x16mode();
+		case VGALO:
+			setpalette(palette::VGA_PAL);
+			break;
 	}
 
 #ifdef __BORLANDC__
@@ -663,7 +672,7 @@ void vga::drawimage(int x, int y, image& img)
 	cnt=h;
 	rem=0;
 	while(cnt) {
-		memory::fast_memcpy(&_os_buffer[dest],&img.buffer[rem],w);
+		memory::fast_memcpy(&_os_buffer[dest],&img._buffer[rem],w);
 		dest+=_row_bytes;
 		rem+=iw;
 		cnt--;
@@ -689,7 +698,7 @@ void vga::drawsprite(int x, int y, image& img, unsigned char mask)
 	h=y+h > _height-1 ? _height-y : h;
 	cnt=h;
 	d=&_sprite_buffer[y*_row_bytes+x];
-	s=img.buffer;
+	s=img._buffer;
 	while(cnt) {
 		memory::mask_memcpy(d,s,w,mask);
 		d+=_row_bytes;
@@ -802,42 +811,35 @@ int main(void)
 	display.cls();
 	display.setpalette(palette::RGB_PAL);
 
-	mariopng.load("ladylrgb.png");
+	mariopng.load("gt40small.png");
 
 	w=mariopng.width();
 	h=mariopng.height();
 
-	mario.setpalette(palette::RGB_PAL);
-	mariopng.filter();
+	mario.setpalette(display.getpalette());
 	mariopng.convert2image(mario);
-	mario.setbg(254);
+//	mario.setbg(254);
 	mariopng.free();
 
-	mario.printhex();
-	w=mario.width();
-	h=mario.height();
+//	mario.printhex();
+	int hyp=(int) sqrt(mario.width()*mario.width()+mario.height()*mario.height());
+	w=hyp;
+	h=hyp;
 
 	image box(w,h);
 	image boxc(w,h);
 	image boxd(w*2,h*2);
 	image boxe(w/2,h/2);
 	image mytext;
-	mytext.setpalette(palette::RGB_PAL);
+	mytext.setpalette(display.getpalette());
 
 	vtext text(display.width(),display.height(),0);
-	text.drawtext(mytext,"GTA",7);
-
-	box.drawbox(5,5,w-11,h-11,color);
-	box.drawbox(6,6,w-13,h-13,color+8);
-	box.drawbox(8,8,w-17,h-17,0);
-
-//	display.getch();
-//	display.debuginfo();
+	mytext.setbg(254);
+	text.drawtext(mytext,"GT40",0);
 
 	for(x=0;x<display.width();x++) {
 		for(y=0;y<display.height();y++) {
 			display.setpixel(x,y,(x/(display.width()/display.colors)));
-//			display.setpixel(x,y,7);
 		}
 	}
 
@@ -845,37 +847,45 @@ int main(void)
 	display.update();
 
 	x=y=0;
-//	display.drawbox(x,y,w,h,color+1);
-//	display.drawbox(x+3,y+3,w-6,h-6,color+2);
 	display.syncsprites();
-	//display.drawsprite(x,y,box);
-	display.drawsprite(x,y,mario,254);
+
+	box.setpalette(display.getpalette());
+	box.setbg(mario.getbg());
+	boxc.setbg(mario.getbg());
+	boxd.setbg(mario.getbg());
+	boxe.setbg(mario.getbg());
+	box.clear();
+	box.copypalette(mario);
+	box.drawimage((box.width()-mario.width())/2,(box.height()-mario.height())/2,mario);
+
+	display.drawsprite(x,y,box);
+	display.drawsprite(display.width()-mytext.width(),2,mytext);
 	display.update();
 	color+=1;
 
 	display.getch();
 
-	boxc=mario;
+	boxc.copypalette(box);
 	boxd.copypalette(boxc);
 	boxe.copypalette(boxc);
 	boxd.scale(boxc);
 	boxe.scale(boxc);
 
-	display.drawsprite(x,y,mytext);
-
 	do {
 		display.syncsprites();
+		display.drawsprite(display.width()-mytext.width(),2,mytext);
 //		display.writef(37,0,7,"rot %d\n",rot);
 //		display.writef(40,24,7,"x %3d y %3d, x1 %3d y1 %3d, w %2d h %2d\n",x,y,x+dx,y+dy,w,h);
 //		display.copyto(x,y,x+dx,y+dy,w,h);
 //		boxd.drawbox(0,0,boxd.width()-1,boxd.height()-1,7,0);
-		mario.rotate(boxc,rot);
+		box.rotate(boxc,rot);
 		boxd.scale(boxc);
 		boxe.scale(boxc);
-		display.drawsprite(display.width()-x,display.height()-y,boxd);
-		display.drawsprite(display.width()-x,y,boxe);
+		display.drawsprite(x,y,boxd);
+//		display.drawsprite(display.width()-x,display.height()-y,boxd);
+//		display.drawsprite(display.width()-x,y,boxe);
 		display.drawsprite(x,y,boxc);
-		display.drawsprite(x,y+boxc.height(),mytext);
+		display.drawsprite(x,y,boxe);
 //		display.drawsprite(x,y,mario);
 //		box.rotate(boxc,rot);
 //		boxc.drawbox(0,0,boxc.width()-1,boxc.height()-1,0,0);
@@ -885,25 +895,16 @@ int main(void)
 		rot++;
 		if(rot>360) rot=0;
 
-
 		x+=dx;
 		y+=dy;
+
 		if(x>display.width()-w-1 || x<1) {
-			box.drawbox(5,5,w-11,h-11,color);
-			box.drawbox(6,6,w-13,h-13,color+8);
-			box.drawbox(8,8,w-17,h-17,0);
-			color+=1;
 			dx*=-1;
 		}
+
 		if(y>display.height()-h-1 || y<1) {
-			box.drawbox(5,5,w-11,h-11,color);
-			box.drawbox(6,6,w-13,h-13,color+8);
-			box.drawbox(8,8,w-17,h-17,0);
-			color+=1;
 			dy*=-1;
 		}
-		if (color > display.colors) color=1;
-
 	} while(!display.kbhit() && c!=27);
 
 //	display.getch();
