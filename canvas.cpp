@@ -72,7 +72,6 @@ void canvas::initvars(void)
 	_buffer=NULL;
 	_palette=NULL;
 	_palette_size=0;
-	printf("copy default palette ptr %p\n",_default_palette);
 	copypalette(_default_palette, _default_palette_size);
 }
 
@@ -145,7 +144,6 @@ canvas::pixel_t canvas::lookuppalentry(palette::pal_t *p)
 		if (_palette[i].r == p->r &&
 			_palette[i].g == p->g &&
 			_palette[i].b == p->b) {
-				//printf("pal entry %d %d %d found at %d %02x\n",_palette[i].r,_palette[i].g,_palette[i].b,i,i);
 				return i;
 			}
 
@@ -399,7 +397,6 @@ void canvas::setdefpalette(palette::pal_t *p, int size)
 {
 	_default_palette_size=size;
 
-	printf("default palette ptr %p\n",_default_palette);
 	if (_default_palette_isset == true) delete[] _default_palette;
 
 	_default_palette=new palette::pal_t[_default_palette_size];
