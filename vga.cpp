@@ -794,10 +794,8 @@ int main(void)
 	uint32_t i;
 	unsigned char color=1;
 	unsigned char c=0;
-	unsigned int rot=0;
+	int rot=0,rotx=(rand()%5+1);
 	vga display;
-	png mariopng;
-	image mario;
 
 	dx=1;
 	dy=1;
@@ -809,15 +807,19 @@ int main(void)
 	display.graphmode(SDLVGALO);
 	display.initsprites();
 	display.cls();
-	display.setpalette(palette::RGB_PAL);
+	display.setpalette(palette::VGA_PAL);
+	canvas::setdefpalette(display.getpalette());
 
-	mariopng.load("gt40small.png");
+	png mariopng;
+	image mario;
+
+	mariopng.load("gt40med.png");
 
 	w=mariopng.width();
 	h=mariopng.height();
 
-	mario.setpalette(display.getpalette());
-	mariopng.convert2image(mario);
+//	mario.setpalette(display.getpalette());
+	mariopng.convert(mario);
 //	mario.setbg(254);
 	mariopng.free();
 
@@ -831,7 +833,7 @@ int main(void)
 	image boxd(w*2,h*2);
 	image boxe(w/2,h/2);
 	image mytext;
-	mytext.setpalette(display.getpalette());
+//	mytext.setpalette(display.getpalette());
 
 	vtext text(display.width(),display.height(),0);
 	mytext.setbg(254);
@@ -849,7 +851,7 @@ int main(void)
 	x=y=0;
 	display.syncsprites();
 
-	box.setpalette(display.getpalette());
+//	box.setpalette(display.getpalette());
 	box.setbg(mario.getbg());
 	boxc.setbg(mario.getbg());
 	boxd.setbg(mario.getbg());
@@ -865,9 +867,9 @@ int main(void)
 
 	display.getch();
 
-	boxc.copypalette(box);
-	boxd.copypalette(boxc);
-	boxe.copypalette(boxc);
+//	boxc.copypalette(box);
+//	boxd.copypalette(boxc);
+//	boxe.copypalette(boxc);
 	boxd.scale(boxc);
 	boxe.scale(boxc);
 
@@ -892,18 +894,23 @@ int main(void)
 //		c=display.getch();
 
 		display.update();
-		rot++;
+		rot+=rotx;
 		if(rot>360) rot=0;
+		if(rot<0) rot=360;
 
 		x+=dx;
 		y+=dy;
 
 		if(x>display.width()-w-1 || x<1) {
 			dx*=-1;
+			rotx*=-1;
+			rotx=((rotx>0)-(rotx<0))*(rand()%5+1);
 		}
 
 		if(y>display.height()-h-1 || y<1) {
 			dy*=-1;
+			rotx*=-1;
+			rotx=((rotx>0)-(rotx<0))*(rand()%5+1);
 		}
 	} while(!display.kbhit() && c!=27);
 

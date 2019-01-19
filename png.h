@@ -240,7 +240,7 @@ public:
 			else return string(_err_messages[_errno]);
 	}
 	bool load(const char *file);
-	bool convert2image(image& img);
+	bool convert(image& img);
 	void free(void);
 };
 

@@ -9,7 +9,7 @@
 class image : public canvas {
 
 public:
-image(void);
+image();
 image(unsigned int width, unsigned int height);
 image(unsigned int width, unsigned int height, unsigned char background);
 void printhex(void);

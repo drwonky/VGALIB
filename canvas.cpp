@@ -4,12 +4,17 @@
  *      Author: pedward
  */
 
+#include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include "canvas.h"
 #include "sincos.h"
 #include "memory.h"
+
+palette::pal_t *canvas::_default_palette=(palette::pal_t *)palette::palettes[palette::RGB_PAL].pal;
+int canvas::_default_palette_size=palette::palettes[palette::RGB_PAL].palette_entries;
+bool canvas::_default_palette_isset=false;
 
 canvas::~canvas()
 {
@@ -66,6 +71,9 @@ void canvas::initvars(void)
 	_bgcolor=0;
 	_buffer=NULL;
 	_palette=NULL;
+	_palette_size=0;
+	printf("copy default palette ptr %p\n",_default_palette);
+	copypalette(_default_palette, _default_palette_size);
 }
 
 bool canvas::allocate(void)
@@ -79,9 +87,11 @@ bool canvas::allocate(void)
 
 void canvas::fill(pixel_t color)
 {
-	unsigned int p=_width*_height;
-
-	while(p--) _buffer[p]=color;
+	if ((_width*_height) & 3 == 0) { // dword optimization
+		uint32_t c=(color<<24)|(color<<16)|(color<<8)|(color);
+		uint32_t *e = (uint32_t *)_buffer+_width*_height;
+		for(uint32_t *p=(uint32_t *)_buffer;p<e;p++) *p=c;
+	} else for(ptr_t p=_buffer;p<_buffer+_width*_height;p++) *p=color;
 }
 
 // weighted squares color distance calculation
@@ -309,7 +319,7 @@ void canvas::rotate(canvas& dest, int angle)
 	int32_t sinma = sindeg[angle];
 	int32_t cosma = cosdeg[angle];
 	int32_t xt,yt,xs,ys;
-	unsigned int x,y;
+	int x,y;
 
 	for(x = 0; x < _width; x++) {
 		xt = x - hwidth;
@@ -324,7 +334,7 @@ void canvas::rotate(canvas& dest, int angle)
 				//dest._buffer[y*_width+x]=_buffer[ys*_width+xs];
 				dest.setpixel(x,y,getpixel(xs,ys));
 			} else {
-				dest.setpixel(x,y);
+				dest.setpixel(x,y); // @suppress("Ambiguous problem")
 				//dest._buffer[y*_width+x]=_bg;
 			}
 		}
@@ -353,6 +363,21 @@ bool canvas::copypalette(const canvas& img)
 	return true;
 }
 
+bool canvas::copypalette(palette::pal_t *p, int size)
+{
+	_palette_size=size;
+
+	if (_palette) delete[] _palette;
+
+	_palette=new palette::pal_t[_palette_size];
+
+	if (_palette == NULL) return false;
+
+	memcpy(_palette,p,sizeof(palette::pal_t)*_palette_size);
+
+	return true;
+}
+
 void canvas::setpalette(palette::pal_t *p)
 {
         memcpy(_palette,p,sizeof(palette::pal_t)*_palette_size);
@@ -370,6 +395,44 @@ bool canvas::setpalette(palette::pal_type pal)
 	return true;
 }
 
+void canvas::setdefpalette(palette::pal_t *p, int size)
+{
+	_default_palette_size=size;
+
+	printf("default palette ptr %p\n",_default_palette);
+	if (_default_palette_isset == true) delete[] _default_palette;
+
+	_default_palette=new palette::pal_t[_default_palette_size];
+
+	if (_default_palette == NULL) {
+		_default_palette_size=0;
+		return;
+	}
+
+	memcpy(_default_palette,p,sizeof(palette::pal_t)*_default_palette_size);
+
+	_default_palette_isset=true;
+}
+
+bool canvas::setdefpalette(palette::pal_type pal)
+{
+	_default_palette_size=palette::palettes[pal].palette_entries;
+
+	if (_default_palette_isset == true) delete[] _default_palette;
+
+	_default_palette=new palette::pal_t[_default_palette_size];
+
+	if (_default_palette == NULL) return false;
+
+	memcpy(_default_palette,palette::palettes[pal].pal,sizeof(palette::pal_t)*_default_palette_size);
+
+	_default_palette_isset=true;
+
+	cout<<"Default palette "<<(int)pal<<endl;
+
+	return true;
+}
+
 void canvas::scale(canvas& dest, int width, int height)
 {
 	int x,y;
@@ -379,33 +442,61 @@ void canvas::scale(canvas& dest, int width, int height)
 
 	for (y=0;y<height;y++) {
 		for (x=0;x<width;x++) {
-			dest._buffer[y*width+x]=_buffer[(y*_height/height)*_width+(x*_width/width)];
+//			dest._buffer[y*width+x]=_buffer[(y*_height/height)*_width+(x*_width/width)];
+			dest.setpixel(x,y,getpixel(x*_width/width,y*_height/_height));
 		}
 	}
 }
 
-canvas& canvas::scale(int width, int height)
+canvas canvas::scale(int width, int height)
 {
-	canvas *ret = new canvas(width,height);
+	canvas ret(width,height);
 
-	scale(*ret,width,height);
+	scale(ret,width,height);
 
-	ret->setbg(getbg());
+	ret.setbg(getbg());
 
-	return *ret;
+	return ret;
 }
 
 void canvas::scale(canvas& img)
 {
 	unsigned int x,y;
-	int iw=img.width();
-	int ih=img.height();
+	int src_width=img.width();
+	int src_height=img.height();
 	setbg(img.getbg());
 
 	for (y=0;y<_height;y++) {
 		for (x=0;x<_width;x++) {
-			_buffer[y*_width+x]=img._buffer[y*ih/_height*iw+x*iw/_width];
-//			setpixel(x,y,img.getpixel(x*iw/_width,y*ih/h));
+//			_buffer[y*_width+x]=img._buffer[y*ih/_height*iw+x*iw/_width];
+			setpixel(x,y,img.getpixel(x*src_width/_width,y*src_height/_height));
+		}
+	}
+}
+
+// 2x smooth zoom
+void canvas::scaleDCCI(canvas& img)
+{
+	unsigned int x,y;
+	int src_width=img.width();
+	int src_height=img.height();
+
+	setbg(img.getbg());
+	clear();
+	size(src_width<<1,src_height<<1);
+
+	for (y=0;y<src_height;y++) {
+		for (x=0;x<src_width;x++) {
+			setpixel(x<<1,y<<1,img.getpixel(x,y));
+		}
+	}
+
+	int d1,d2;
+
+	for (y=0;y<_height;y++) {
+		for (x=0;x<_width;x++) {
+
+//			setpixel(x,y,img.getpixel(x*iw/_width,y*ih/_height));
 		}
 	}
 }

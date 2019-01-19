@@ -7,16 +7,14 @@
 
 #include <iostream>
 
-image::image(void)
+image::image()
 	: canvas()
 {
-	setpalette(palette::VGA_PAL);
 }
 
 image::image(unsigned int width, unsigned int height)
 	: canvas(width,height)
 {
-	setpalette(palette::VGA_PAL);
 	size(width,height);
 }
 
@@ -24,7 +22,6 @@ image::image(unsigned int width, unsigned int height, pixel_t background)
 	: canvas(width,height)
 
 {
-	setpalette(palette::VGA_PAL);
 	size(width,height);
 	setbg(background);
 }

@@ -580,7 +580,7 @@ void png::filter(void)
 	}
 }
 
-bool png::convert2image(image& img)
+bool png::convert(image& img)
 {
 	int x,y,i,index;
 	unsigned char *pemap;
@@ -851,7 +851,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	cout<<"Converting..."<<endl;
-	p.convert2image(i);
+	p.convert(i);
 
 	debug(i.printhex();)
 

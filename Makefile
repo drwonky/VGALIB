@@ -1,7 +1,7 @@
 BCC = bcc
 BCFLAGS = -a- -3 -Fs- -mh -v
 
-CFLAGS = -ggdb -std=c++98
+CFLAGS = -ggdb -std=c++98 -O2
 # -DTEST -DDEBUG
 
 CC = gcc

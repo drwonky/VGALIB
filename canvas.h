@@ -18,6 +18,8 @@ using namespace std;
 #include <iostream.h>
 #endif
 
+//TODO: Add default palette with static member
+
 class canvas {
 public:
 	typedef unsigned char pixel_t;
@@ -32,6 +34,11 @@ protected:
 
 	palette::pal_t *_palette;
 	int _palette_size;
+
+private:
+	static palette::pal_t *_default_palette;
+	static int _default_palette_size;
+	static bool _default_palette_isset;  // We use static initialization to give a sane palette to new instances, but we want to be able to override the static reference.
 
 private:
 	void initvars(void);	// c++98 does not support delegating constructors
@@ -62,10 +69,13 @@ public:
 	virtual void drawtext(string_t str, int x, int y, pixel_t color) {;}
 	virtual bool setpalette(palette::pal_type pal);
 	virtual void setpalette(palette::pal_t *pal);
+	static bool setdefpalette(palette::pal_type pal);
+	static void setdefpalette(palette::pal_t *pal, int size);
 	virtual const palette::pal_t *getpalette(void) const { return _palette; }
 	virtual int palette_size(void) const { return _palette_size; }
-	virtual palette::pal_t getpalentry(pixel_t i) { return (palette::pal_t)_palette[i]; }
+	virtual palette::pal_t getpalentry(pixel_t i) const { return _palette[i]; }
 	virtual bool copypalette(const canvas& img);
+	virtual bool copypalette(palette::pal_t *p, int size);
 	virtual int32_t wcolordist(palette::pal_t *a, palette::pal_t *b);
 	virtual int32_t colordist(palette::pal_t *a, palette::pal_t *b);
 	virtual pixel_t lookuppalentry(palette::pal_t *p);
@@ -77,8 +87,9 @@ public:
 	virtual void rotate(canvas& dest, int angle);
 	virtual void rotate(int angle);
 	virtual void scale(canvas& dest, int width, int height);
-	virtual canvas& scale(int width, int height);
+	virtual canvas scale(int width, int height);
 	virtual void scale(canvas& img);
+	virtual void scaleDCCI(canvas& img);
 
 };
 
