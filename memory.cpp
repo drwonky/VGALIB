@@ -40,18 +40,40 @@ endbytecopy:
 #else
 	ptr_t s,p,e;
 
+//	ptr_t *sp[2];
+//	sp[0] = &s;
+//	sp[1] = &p;
+//	p = dest;
+//	s = src;
+//	e = dest + size;
+//	do
+//	{
+//		*p = *(*sp[*s == mask]);
+//		p++;
+//		s++;
+//	} while (p < e);
+
+//	p=dest;
+//	s=src;
+//	e=dest+size;
+//	while(p<e) {
+//		if(*s!=mask) *p=*s;
+//		p++;
+//		s++;
+//	}
+
 	p=dest;
 	s=src;
 	e=dest+size;
-	while(p<e) {
+	do {
 		if(*s!=mask) *p=*s;
 		p++;
 		s++;
-	}
+	} while(p<e);
 #endif
 }
 
-void memory::fast_memcpy(ptr_t dest, ptr_t src, size_t size)
+void memory::fast_memcpy(void *dest, void *src, size_t size)
 {
 
 #ifdef __BORLANDC__

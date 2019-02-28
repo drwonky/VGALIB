@@ -9,6 +9,8 @@ vtext::vtext()
 	font_num=0;
 	max_width=320;
 	max_height=200;
+	bgcolor=0;
+	font=NULL;
 }
 
 vtext::vtext(int width, int height, unsigned char background)
@@ -53,7 +55,7 @@ bool vtext::drawtext(image& img, const char *string, unsigned char color)
 		for (y=0;y<font->font_height;y++) {
 			font_bits=cptr[y];
 			for (x=0;x<font->font_width;x++) {
-				bitset=(font_bits>>(7-x&7)) & 0x1;
+				bitset=(font_bits>>(7-(x&7))) & 0x1;
 				debug(printf("%s",bitset?".":" ");)
 				if (bitset) img.setpixel(x+x_cursor,y+y_cursor,color);
 				else img.setpixel(x+x_cursor,y+y_cursor);

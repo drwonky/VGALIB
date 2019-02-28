@@ -11,7 +11,9 @@
 #ifndef __BORLANDC__
 #include <SDL2/SDL.h>
 #define SDL
+#define KBHIT display.kbhit
 #else
+#define KBHIT kbhit
 #include <dos.h>
 #include <conio.h>
 #endif
@@ -24,17 +26,15 @@
 #define CRTCmb 0x3b4
 #define CRTCmd 0x3ba
 
+class vga {
+
+public:
 enum Vgamode { NONE = 0, TEXT = 0x03, VGAMONO = 0x11, VGAHI = 0x12, VGALO = 0x13, X16 = 0x15, MDA = 0x07, SDLVGALO = 0x16, SDLX16 = 0x17 };
 
-unsigned char gtable[]={0x35,0x2d,0x2e,0x07,
-			0x5b,0x02,0x57,0x57,
-			0x02,0x03,0x00,0x00};
-unsigned char ttable[]={0x61,0x50,0x52,0x0f,
-			0x19,0x06,0x19,0x19,
-			0x02,0x0d,0x0b,0x0c};
+static const unsigned char gtable[];
+static const unsigned char ttable[];
 
-
-struct video_mode {
+typedef struct {
 Vgamode mode;
 unsigned int x;
 unsigned int y;
@@ -45,18 +45,9 @@ unsigned char bpp;
 unsigned char colors;
 unsigned int sr;
 unsigned int scale;
-} video_modes[] = {
- {TEXT,80,25,80,0xb800,1,8,0xF,0x3da,0},
- {VGAMONO,640,480,80,0xa000,1,1,0x1,0x3da,0},
- {VGAHI,640,480,80,0xa000,4,1,0xF,0x3da,0},
- {VGALO,320,200,320,0xa000,1,8,0xFF,0x3da,0},
- {X16,160,100,160,0xb800,1,8,0xF,0x3da,0},
- {SDLVGALO,320,200,320,0xa000,1,8,0xFF,0x3da,4},
- {SDLX16,160,100,160,0xb800,1,8,0xF,0x3da,8},
- {MDA,80,25,80,0xb000,1,8,0xF,0x3ba,0}
-};
+} video_mode;
 
-class vga {
+static const video_mode video_modes[];
 
 protected:
 #ifdef SDL
@@ -90,15 +81,15 @@ palette::pal_type _cur_palette;
 
 public:
 unsigned char colors;
+static bool SDLonce;
 
-private:
+protected:
 int bytes_per_row(void);
 void write_crtc(unsigned int port, unsigned char reg, unsigned char val);
 bool x16mode(void);
 Vgamode getmode(void);
 
 unsigned char planes;
-static bool SDLonce;
 
 
 public:
@@ -118,17 +109,17 @@ void setpixel(int x, int y, unsigned char visible);
 unsigned char getpixel(int x, int y);
 void cls(void);
 void cls(unsigned char *buf);
-unsigned int width(void);
-unsigned int height(void);
+unsigned int width(void) { return(_width); }
+unsigned int height(void) { return(_height); }
 void save_buffer(void);
 void restore_buffer(void);
 unsigned char far *allocate_screen_buffer();
 void copy_buffer(unsigned char *src);
 void copyto(unsigned int x, unsigned int y, unsigned int x1, unsigned int y1, unsigned int w, unsigned int h);
 void drawbox(int x,int y,int w,int h,unsigned char color);
-void drawimage(int x, int y, image& img);
-void drawsprite(int x, int y, image& img);
-void drawsprite(int x, int y, image& img, unsigned char mask);
+void drawimage(unsigned int x, unsigned int y, image& img);
+void drawsprite(unsigned int x, unsigned int y, image& img);
+void drawsprite(unsigned int x, unsigned int y, image& img, unsigned char mask);
 void syncsprites(void);
 void update(void);
 void vsync(void);
@@ -136,12 +127,9 @@ void writef(int col, int row, int color, char *format, ...);
 void translate(unsigned char far *src);
 bool detectMDA(void);
 bool kbhit(void);
-char getch(void);
+int getch(void);
 
 
 };
-
-bool vga::SDLonce = false;
-
 
 #endif /* VGA_H_ */

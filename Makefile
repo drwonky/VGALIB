@@ -1,18 +1,22 @@
 BCC = bcc
-BCFLAGS = -a- -3 -Fs- -mh -v
+BCFLAGS = -a- -3 -Fs- -mh -O2 -v
+# -Ie:\bc45\include -Le:\bc45\lib
 
-CFLAGS = -ggdb -std=c++98 -O2
+CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -ggdb -std=c++98 -O
 # -DTEST -DDEBUG
 
 CC = gcc
 CXX = g++
 
-SRC = png.cpp image.cpp memory.cpp vtext.cpp palettes.cpp canvas.cpp
-OBJS = png.o pngtest.o image.o memory.o vtext.o vga.o palettes.o canvas.o
-BIN = png vga VGA.EXE
+EXX = em++
+EMFLAGS = --preload-file emscripten/assets --shell-file shell_minimal.html -s USE_ZLIB=1 -s USE_SDL=2
+
+SRC = vga.cpp png.cpp image.cpp memory.cpp vtext.cpp palettes.cpp canvas.cpp
+OBJS = vga.o vgademo.o png.o pngtest.o image.o memory.o vtext.o vga.o palettes.o canvas.o
+BIN = png vgademo VGA.EXE
 SDLFLAGS = $(shell sdl2-config --cflags --libs)
 
-all:
+all: vgademo emdemo emx16demo emscripten/emdemo.html emscripten/emx16demo.html
 
 .cpp.o:
 	$(CXX) $(CFLAGS) -c -o $@ $<
@@ -20,7 +24,7 @@ all:
 .c.o:
 	$(CC) $(CFLAGS) -o $@ $<
 
-.obj.cpp:
+.cpp.obj:
 	$(BCC) $(BCFLAGS) -c $<
 	
 depend: $(SRC)
@@ -31,9 +35,8 @@ vtext.obj: vtext.cpp fonts.h
 memory.obj: memory.cpp
 	$(BCC) $(BCFLAGS) -B -c memory.cpp
 
-png.obj: png.cpp image.obj memory.obj zlib.h zconf.h
-
-image.obj: image.cpp
+png.obj: png.cpp image.obj canvas.obj memory.obj zlib.h zconf.h
+#	$(BCC) $(BCFLAGS) -DDEBUG -c $**
 
 vga.obj: vga.cpp
 	$(BCC) $(BCFLAGS) -B -c vga.cpp
@@ -44,18 +47,33 @@ pngtest.o: png.cpp
 matrix: matrix.cpp
 	$(CXX) $(CFLAGS) -DTEST -o $@ $^
 
-png: image.o memory.o pngtest.o palettes.o
+png: image.o memory.o pngtest.o palettes.o canvas.o
 	$(CXX) $(CFLAGS) -DTEST -DDEBUG -o $@ $^ -lz
 
-vga: vga.o image.o memory.o png.o vtext.o palettes.o canvas.o
+vgademo: vgademo.o vga.o image.o memory.o png.o vtext.o palettes.o canvas.o
 	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz
+
+emdemo: emdemo.o vga.o image.o memory.o png.o vtext.o palettes.o canvas.o
+	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz
+
+emx16demo: emx16demo.o vga.o image.o memory.o png.o vtext.o palettes.o canvas.o
+	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz
+
+emscripten/emdemo.html: emdemo.cpp $(SRC)
+	$(EXX) $(EMFLAGS) -o $@ $^ 
+	
+emscripten/emx16demo.html: emx16demo.cpp $(SRC)
+	$(EXX) $(EMFLAGS) -o $@ $^ 
 	
 png.exe: png.cpp memory.obj image.cpp zlib.h zconf.h zlib_h.lib
 	bcc -DDEBUG -DTEST -3 -Fs- -mh -v png.cpp memory.obj image.cpp zlib_h.lib
 
-vga.exe: memory.obj image.obj png.obj vga.obj zlib_h.lib vtext.obj
-	$(BCC) $(BCFLAGS) vga.obj image.obj memory.obj png.obj vtext.obj zlib_h.lib
+vga.exe: vga.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj
+	$(BCC) $(BCFLAGS) vga.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj
 	
+dclean:
+	del *.obj vga.exe
+
 clean:
 	rm -f $(OBJS) $(BIN)
 
@@ -116,7 +134,7 @@ image.o: /usr/include/string.h /usr/include/bits/types/locale_t.h
 image.o: /usr/include/bits/types/__locale_t.h /usr/include/strings.h types.h
 image.o: /usr/include/stdint.h /usr/include/bits/wchar.h
 image.o: /usr/include/bits/stdint-intn.h /usr/include/bits/stdint-uintn.h
-image.o: memory.h image.h canvas.h palettes.h sincos.h
+image.o: memory.h image.h canvas.h palettes.h
 memory.o: /usr/include/stdlib.h /usr/include/bits/libc-header-start.h
 memory.o: /usr/include/features.h /usr/include/stdc-predef.h
 memory.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
@@ -158,15 +176,19 @@ vtext.o: /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h
 vtext.o: image.h types.h /usr/include/stdint.h /usr/include/bits/wchar.h
 vtext.o: /usr/include/bits/stdint-intn.h /usr/include/bits/stdint-uintn.h
 vtext.o: canvas.h palettes.h vtext.h fonts.h
-palettes.o: palettes.h
-canvas.o: /usr/include/stdlib.h /usr/include/bits/libc-header-start.h
+palettes.o: palettes.h RRRGGGBBs.h
+canvas.o: /usr/include/stdio.h /usr/include/bits/libc-header-start.h
 canvas.o: /usr/include/features.h /usr/include/stdc-predef.h
 canvas.o: /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h
 canvas.o: /usr/include/bits/long-double.h /usr/include/gnu/stubs.h
+canvas.o: /usr/include/bits/types.h /usr/include/bits/typesizes.h
+canvas.o: /usr/include/bits/types/__FILE.h /usr/include/bits/types/FILE.h
+canvas.o: /usr/include/bits/libio.h /usr/include/bits/_G_config.h
+canvas.o: /usr/include/bits/types/__mbstate_t.h /usr/include/bits/stdio_lim.h
+canvas.o: /usr/include/bits/sys_errlist.h /usr/include/stdlib.h
 canvas.o: /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h
 canvas.o: /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h
-canvas.o: /usr/include/sys/types.h /usr/include/bits/types.h
-canvas.o: /usr/include/bits/typesizes.h /usr/include/bits/types/clock_t.h
+canvas.o: /usr/include/sys/types.h /usr/include/bits/types/clock_t.h
 canvas.o: /usr/include/bits/types/clockid_t.h
 canvas.o: /usr/include/bits/types/time_t.h /usr/include/bits/types/timer_t.h
 canvas.o: /usr/include/bits/stdint-intn.h /usr/include/endian.h

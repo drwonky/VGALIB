@@ -235,10 +235,7 @@ public:
 	int32_t width(void) { return _width; }
 	int32_t height(void) { return _height; }
 	png_errcodes error(void) { return _errno; }
-	string errormsg(void) {
-			if (errno != 0) return string(_err_messages[_errno])+string(": ")+string(strerror(errno));
-			else return string(_err_messages[_errno]);
-	}
+	string errormsg(void);
 	bool load(const char *file);
 	bool convert(image& img);
 	void free(void);

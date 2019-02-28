@@ -18,8 +18,6 @@ using namespace std;
 #include <iostream.h>
 #endif
 
-//TODO: Add default palette with static member
-
 class canvas {
 public:
 	typedef unsigned char pixel_t;
@@ -27,8 +25,8 @@ public:
 	ptr_t _buffer;
 
 protected:
-	int _width;
-	int _height;
+	int32_t _width;
+	int32_t _height;
 	pixel_t _colors;
 	pixel_t _bgcolor;
 
@@ -40,8 +38,8 @@ private:
 	static int _default_palette_size;
 	static bool _default_palette_isset;  // We use static initialization to give a sane palette to new instances, but we want to be able to override the static reference.
 
-private:
-	void initvars(void);	// c++98 does not support delegating constructors
+protected:
+	virtual void initvars(void);	// c++98 does not support delegating constructors
 
 public:
 	virtual ~canvas();
@@ -49,6 +47,8 @@ public:
 	canvas(int width, int height);
 	canvas(const canvas& img);
 	canvas& operator = (const canvas& img);
+	int bitcnt(uint32_t in);
+	int bitpow(uint32_t in);
 	virtual void free(void);
 	virtual bool copybuffer(ptr_t *src) { return true; }
 	virtual ptr_t getbuffer(void) { return _buffer; }
@@ -76,11 +76,11 @@ public:
 	virtual palette::pal_t getpalentry(pixel_t i) const { return _palette[i]; }
 	virtual bool copypalette(const canvas& img);
 	virtual bool copypalette(palette::pal_t *p, int size);
-	virtual int32_t wcolordist(palette::pal_t *a, palette::pal_t *b);
-	virtual int32_t colordist(palette::pal_t *a, palette::pal_t *b);
+	uint32_t inline wcolordist(palette::pal_t *a, palette::pal_t *b);
+	uint32_t inline colordist(palette::pal_t *a, palette::pal_t *b);
 	virtual pixel_t lookuppalentry(palette::pal_t *p);
 	virtual pixel_t findnearestpalentry(palette::pal_t *p);
-	virtual bool size(int width, int height) { if (_buffer) delete[] _buffer; _width=width; _height=height; return allocate(); }
+	virtual bool size(int width, int height) { if (_buffer) { delete[] _buffer; _buffer=NULL; } _width=width; _height=height; return allocate(); }
 	virtual void setbg(pixel_t background){ _bgcolor = background; }
 	virtual pixel_t getbg(void) { return _bgcolor; }
 	virtual void rotate(int x, int y, int width, int height, int angle) {;}

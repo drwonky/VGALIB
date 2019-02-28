@@ -10,8 +10,8 @@ class image : public canvas {
 
 public:
 image();
-image(unsigned int width, unsigned int height);
-image(unsigned int width, unsigned int height, unsigned char background);
+image(int width, int height);
+image(int width, int height, unsigned char background);
 void printhex(void);
 void dumppalette(void);
 

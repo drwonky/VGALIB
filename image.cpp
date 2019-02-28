@@ -5,30 +5,34 @@
 #include "memory.h"
 #include "image.h"
 
+#ifdef __BORLANDC__
+#include <iostream.h>
+#else
 #include <iostream>
+#endif
 
 image::image()
 	: canvas()
 {
 }
 
-image::image(unsigned int width, unsigned int height)
+
+image::image(int width, int height)
 	: canvas(width,height)
 {
-	size(width,height);
 }
 
-image::image(unsigned int width, unsigned int height, pixel_t background)
+image::image(int width, int height, pixel_t background)
 	: canvas(width,height)
 
 {
-	size(width,height);
+//	size(width,height);
 	setbg(background);
 }
 
 void image::printhex(void)
 {
-    unsigned int i,j,b;
+    int32_t i,j,b;
 
     b=_width;
 

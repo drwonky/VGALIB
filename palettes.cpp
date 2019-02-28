@@ -286,7 +286,7 @@ const palette::pal_t palette::cga_pal[] = {
 	};
 
 const palette::pal_t palette::rgb8bpp_pal[] = {
-{0,0,0},
+/*{0,0,0},
 {37,0,0},
 {73,0,0},
 {110,0,0},
@@ -541,7 +541,8 @@ const palette::pal_t palette::rgb8bpp_pal[] = {
 {146,255,255},
 {183,255,255},
 {219,255,255},
-{255,255,255}
+{255,255,255}*/
+#include "RRRGGGBBs.h"
 };
 
 const palette::palette_def palette::palettes[] = {

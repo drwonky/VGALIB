@@ -8,7 +8,7 @@
 #endif
 
 #ifdef __BORLANDC__
-enum bool {false,true};
+//enum bool {false,true};
 #define int32_t long
 #define uint32_t unsigned long
 #else

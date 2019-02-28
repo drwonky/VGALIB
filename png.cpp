@@ -65,6 +65,12 @@ png::~png(void)
 	this->free();
 }
 
+string png::errormsg(void)
+{
+		if (errno != 0) return string(_err_messages[_errno])+string(": ")+string(strerror(errno));
+		else return string(_err_messages[_errno]);
+}
+
 void png::free(void)
 {
 	if (_image_buffer) { delete[] _image_buffer; _image_buffer=NULL; }
@@ -333,6 +339,7 @@ bool png::load(const char *file)
 					switch (ret) {
 					case Z_NEED_DICT:
 						ret = Z_DATA_ERROR;     
+						// fall through
 					case Z_MEM_ERROR:
 					case Z_DATA_ERROR:
 						(void)inflateEnd(&z);
@@ -460,6 +467,8 @@ bool png::load(const char *file)
 				break;
 			case eUND:
 			default:
+				zavail=0;
+				zptr=NULL;
 				debug(cout<<"UNDefined chunk "<<type<<" of size "<<_chunk->len<< endl;)
 				break;
 		}
@@ -591,8 +600,9 @@ bool png::convert(image& img)
 	palette::pala_t *pixela;
 	short gray_pixel;
 
-	if (!img.size(_width,_height))
+	if (!img.size(_width,_height)) {
 		return false;
+	}
 
 //	printhex(_image_buffer);
 
@@ -603,11 +613,11 @@ bool png::convert(image& img)
 
 	switch(_colors) {
 		case GRAYA:
-		case GRAY:
+		case GRAY: {
 			debug(cout<<"Building pemap for "<<(int)_depth<<" bpp"<<endl;)
 			_pal_size=img.palette_size();
 			pemap = new unsigned char[1<<_depth]; // Grayscale 1,2,4,8,16 bpp
-			for (unsigned int x=0;x<(1<<_depth);x++) {
+			for (int x=0;x<(1<<_depth);x++) {
 				// decimate 16bpp images, we can't show 64k shades of gray anyway
 				ip.r=_depth < 16 ? x : x>>8;
 				ip.g=_depth < 16 ? x : x>>8;
@@ -676,7 +686,8 @@ bool png::convert(image& img)
 
 			delete[] pemap;
 			break;
-		case RGBA:
+		}
+		case RGBA: {
 			_pal_size=img.palette_size();
 
 			if (!small_image) {
@@ -696,7 +707,7 @@ bool png::convert(image& img)
 
 				debug(cout<<"Built pemap 64x64x64"<<endl;)
 
-				img.setbg(pemap[_bg.rgb.r>>2*64*64+_bg.rgb.g>>2*64+_bg.rgb.b>>2]);
+				img.setbg(pemap[((_bg.rgb.r>>2)*64*64)+((_bg.rgb.g>>2)*64)+(_bg.rgb.b>>2)]);
 				debug(cout<<"BG small pal entry: "<<(int)img.getbg()<<endl;)
 			} else {
 				ip.r=(unsigned char)_bg.rgb.r;
@@ -729,7 +740,8 @@ bool png::convert(image& img)
 
 			if (!small_image) delete[] pemap;
 			break;
-		case RGB:
+		}
+		case RGB: {
 			_pal_size=img.palette_size();
 
 			if (!small_image) {
@@ -749,7 +761,7 @@ bool png::convert(image& img)
 
 				debug(cout<<"Built pemap 64x64x64"<<endl;)
 
-				img.setbg(pemap[_bg.rgb.r>>2*64*64+_bg.rgb.g>>2*64+_bg.rgb.b>>2]);
+				img.setbg(pemap[((_bg.rgb.r>>2)*64*64)+((_bg.rgb.g>>2)*64)+(_bg.rgb.b>>2)]);
 				debug(cout<<"BG small pal entry: "<<(int)img.getbg()<<endl;)
 			} else {
 				ip.r=(unsigned char)_bg.rgb.r;
@@ -788,7 +800,8 @@ bool png::convert(image& img)
 
 			if (!small_image) delete[] pemap;
 			break;
-		case INDEXED:
+		}
+		case INDEXED: {
 			pemap = new unsigned char[_pal_size];
 			for (i=0; i<_pal_size; i++) {
 				ip.r=_pal[i].r;
@@ -833,6 +846,7 @@ bool png::convert(image& img)
 			img.setbg(pemap[_bg.ndx]);
 			delete[] pemap;
 			break;
+		}
 	}
 
 	return true;

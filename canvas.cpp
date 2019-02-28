@@ -42,12 +42,13 @@ canvas::canvas(int width, int height)
 
 canvas::canvas(const canvas& img)
 {
+	initvars();
 	_width=img._width;
 	_height=img._height;
 	_bgcolor=img._bgcolor;
+	copypalette(img);
 	allocate();
 	memory::fast_memcpy(_buffer,img._buffer,_width*_height);
-	copypalette(img);
 }
 
 canvas& canvas::operator = (const canvas& img)
@@ -55,10 +56,13 @@ canvas& canvas::operator = (const canvas& img)
 	_width=img._width;
 	_height=img._height;
 	_bgcolor=img._bgcolor;
-	if (_buffer) delete[] _buffer;
+	if (_buffer) {
+		delete[] _buffer;
+		_buffer = NULL;
+	}
+	copypalette(img);
 	allocate();
 	memory::fast_memcpy(_buffer,img._buffer,_width*_height);
-	copypalette(img);
 
 	return *this;
 }
@@ -72,7 +76,31 @@ void canvas::initvars(void)
 	_buffer=NULL;
 	_palette=NULL;
 	_palette_size=0;
-	copypalette(_default_palette, _default_palette_size);
+}
+
+int canvas::bitcnt(uint32_t in) // count how many bits are high in a number, useful for knowing if a number is the power of 2
+{
+	int count=0;
+
+	if (in==0) return count;
+
+	for(long unsigned int i=0;i<sizeof(in)*8;i++) {
+		count+=in&1;
+		in>>=1;
+	}
+	return count;
+}
+
+int canvas::bitpow(uint32_t in) // convert power of 2 decimal to bit shift count
+{
+	int count=0;
+
+	for(long unsigned int i=0;i<sizeof(in)*8;i++) {
+		if (in&1) break;
+		count++;
+		in>>=1;
+	}
+	return count;
 }
 
 bool canvas::allocate(void)
@@ -81,38 +109,47 @@ bool canvas::allocate(void)
 
 	if(_buffer) this->clear();
 
+	if(_palette == NULL) {
+		copypalette(_default_palette, _default_palette_size);
+	}
+
 	return (bool)(_buffer != NULL && _palette != NULL);
 }
 
 void canvas::fill(pixel_t color)
 {
-	if ((_width*_height) & 3 == 0) { // dword optimization
+//	for(ptr_t p=_buffer;p<_buffer+_width*_height;p++) *p=color;
+	ptr_t end=_buffer+_width*_height;
+	if (((_width*_height) & 3) == 0) { // dword optimization
 		uint32_t c=(color<<24)|(color<<16)|(color<<8)|(color);
-		uint32_t *e = (uint32_t *)_buffer+_width*_height;
-		for(uint32_t *p=(uint32_t *)_buffer;p<e;p++) *p=c;
-	} else for(ptr_t p=_buffer;p<_buffer+_width*_height;p++) *p=color;
+		uint32_t *dwend = (uint32_t *)end;
+//		printf("dword color %02x fill %08x _buffer %p e %p e-_buffer %d wxh %d\n",color,c,(uint32_t *)_buffer,(uint32_t *)e,(uint64_t)e-(uint64_t)_buffer,_width*_height);
+		for(uint32_t *p=(uint32_t *)_buffer;p<dwend;p++) *p=c;
+	} else {
+		for(ptr_t p=_buffer;p<end;p++) *p=color;
+	}
 }
 
 // weighted squares color distance calculation
-int32_t canvas::wcolordist(palette::pal_t *a, palette::pal_t *b)
+inline uint32_t canvas::wcolordist(palette::pal_t *a, palette::pal_t *b)
 {
 	int32_t R,G,B;
 
 	R=(int32_t)(a->r-b->r)*(int32_t)(a->r-b->r);
 	G=(int32_t)(a->g-b->g)*(int32_t)(a->g-b->g);
 	B=(int32_t)(a->b-b->b)*(int32_t)(a->b-b->b);
-	return 2*R+4*G+3*B;
+	return (uint32_t)2*R+4*G+3*B;
 }
 
 // squares color distance calculation
-int32_t canvas::colordist(palette::pal_t *a, palette::pal_t *b)
+inline uint32_t canvas::colordist(palette::pal_t *a, palette::pal_t *b)
 {
 	int32_t R,G,B;
 
 	R=(int32_t)(a->r-b->r)*(int32_t)(a->r-b->r);
 	G=(int32_t)(a->g-b->g)*(int32_t)(a->g-b->g);
 	B=(int32_t)(a->b-b->b)*(int32_t)(a->b-b->b);
-	return R+G+B;
+	return (uint32_t)R+G+B;
 }
 
 // find closest matching color in image palette
@@ -120,9 +157,9 @@ unsigned char canvas::findnearestpalentry(palette::pal_t *p)
 {
 	int i;
 	unsigned char lowindex=0;
-	int32_t lowdist,distance;
+	uint32_t lowdist,distance;
 
-	lowdist=0x2fa03; // max possible color distance
+	lowdist=0x30F201; // max possible color distance
 
 	for (i=0; i<_palette_size; i++) {
 		distance=wcolordist(p,&_palette[i]);
@@ -317,16 +354,16 @@ void canvas::rotate(canvas& dest, int angle)
 	int32_t sinma = sindeg[angle];
 	int32_t cosma = cosdeg[angle];
 	int32_t xt,yt,xs,ys;
-	int x,y;
+	int32_t x,y;
 
 	for(x = 0; x < _width; x++) {
 		xt = x - hwidth;
 		for(y = 0; y < _height; y++) {
 			yt = y - hheight;
 
-			xs =  (cosma * xt - sinma * yt)/16384;
+			xs =  (cosma * xt - sinma * yt)>>14;
 			xs += hwidth;
-			ys =  (sinma * xt + cosma * yt)/16384;
+			ys =  (sinma * xt + cosma * yt)>>14;
 			ys += hheight;
 			if(xs >= 0 && xs < (int32_t)_width && ys >= 0 && ys < (int32_t)_height) {
 				//dest._buffer[y*_width+x]=_buffer[ys*_width+xs];
@@ -425,11 +462,10 @@ bool canvas::setdefpalette(palette::pal_type pal)
 
 	_default_palette_isset=true;
 
-	cout<<"Default palette "<<(int)pal<<endl;
-
 	return true;
 }
 
+// general purpose scale/draw this image onto another image
 void canvas::scale(canvas& dest, int width, int height)
 {
 	int x,y;
@@ -456,27 +492,58 @@ canvas canvas::scale(int width, int height)
 	return ret;
 }
 
+// nearest neighbor scaling, this is the fastest path of all of the scale methods
 void canvas::scale(canvas& img)
 {
-	unsigned int x,y;
-	int src_width=img.width();
-	int src_height=img.height();
+	int32_t x,y;
+	int32_t src_width=img.width();
+	int32_t src_height=img.height();
+	int32_t tx,ty;
+	int32_t scale_factor=(_width/src_width);
+
 	setbg(img.getbg());
 
-	for (y=0;y<_height;y++) {
-		for (x=0;x<_width;x++) {
-//			_buffer[y*_width+x]=img._buffer[y*ih/_height*iw+x*iw/_width];
-			setpixel(x,y,img.getpixel(x*src_width/_width,y*src_height/_height));
+	// if the scale factor is 2 or greater and a power of 2..4..8..16
+	if (_width>src_width && _height>src_height &&  // redundant checks that quickly filter out scaling up from scaling down, allows compiler to bail quicker
+			(scale_factor&1) == 0 // must be 2 or greater
+//			(scale_factor&1) == 0 && // must be 2 or greater
+//			(_width%src_width) == 0 && // no fractional scaling
+//			(scale_factor == (_height/src_height)) && // x and y scaling are same
+//			bitcnt(scale_factor) == 1 // is exactly a power of 2
+			) {
+		int32_t scale_shift=bitpow(scale_factor); // convert decimal scale factor to bit shift
+
+		for (y=0;y<_height;y+=scale_factor) {
+			ty=y>>scale_shift;
+			for (x=0;x<_width;x++) {
+				tx=x>>scale_shift; // power of 2 scaling
+				setpixel(x,y,img.getpixel(tx,ty));
+			}
+			for (int32_t rowcnt=y;rowcnt<y+scale_factor;rowcnt++) {
+				memory::fast_memcpy(&_buffer[rowcnt*_width],&_buffer[y*_width],_width);
+			}
+		}
+	} else {
+		int32_t x_rat=((src_width<<16)/_width)+1;
+		int32_t y_rat=((src_height<<16)/_height)+1;
+
+		for (y=0;y<_height;y++) {
+			ty=((y*y_rat)>>16);
+			for (x=0;x<_width;x++) {
+				tx=(x*x_rat)>>16;
+				setpixel(x,y,img.getpixel(tx,ty));
+			}
 		}
 	}
 }
 
-// 2x smooth zoom
+// TODO 2x smooth zoom
 void canvas::scaleDCCI(canvas& img)
 {
-	unsigned int x,y;
-	int src_width=img.width();
-	int src_height=img.height();
+	/*
+	uint32_t x,y;
+	int32_t src_width=img.width();
+	int32_t src_height=img.height();
 
 	setbg(img.getbg());
 	clear();
@@ -496,11 +563,12 @@ void canvas::scaleDCCI(canvas& img)
 //			setpixel(x,y,img.getpixel(x*iw/_width,y*ih/_height));
 		}
 	}
+	*/
 }
 
 void canvas::drawimage(int x, int y, canvas& img, bool transparent)
 {
-	unsigned int rem,dest,cnt,w,h,iw;
+	int32_t rem,dest,cnt,w,h,iw;
 
 	iw=w=img.width();
 	h=img.height();
@@ -512,10 +580,20 @@ void canvas::drawimage(int x, int y, canvas& img, bool transparent)
 	dest=y*_width+x;
 	cnt=h;
 	rem=0;
-	while(cnt) {
-		memory::fast_memcpy(&_buffer[dest],&img._buffer[rem],w);
-		dest+=_width;
-		rem+=iw;
-		cnt--;
+
+	if (transparent) {
+		while(cnt) {
+			memory::mask_memcpy(&_buffer[dest],&img._buffer[rem],w,img.getbg());
+			dest+=_width;
+			rem+=iw;
+			cnt--;
+		}
+	} else {
+		while(cnt) {
+			memory::fast_memcpy(&_buffer[dest],&img._buffer[rem],w);
+			dest+=_width;
+			rem+=iw;
+			cnt--;
+		}
 	}
 }
