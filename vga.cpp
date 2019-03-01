@@ -21,14 +21,15 @@ const unsigned char vga::ttable[]={0x61,0x50,0x52,0x0f,
 			0x19,0x06,0x19,0x19,
 			0x02,0x0d,0x0b,0x0c};
 
+/* mode, width, height, bytes_per_line, base_addr, bpp, Bpp, colors, vsync_reg, scale */
 const vga::video_mode vga::video_modes[] = {
  {TEXT,80,25,80,0xb800,1,8,0xF,0x3da,0},
  {VGAMONO,640,480,80,0xa000,1,1,0x1,0x3da,0},
  {VGAHI,640,480,80,0xa000,4,1,0xF,0x3da,0},
- {VGALO,320,200,320,0xa000,1,8,0xFF,0x3da,4},
- {X16,160,100,160,0xb800,1,8,0xF,0x3da,8},
- {SDLVGALO,320,200,320,0xa000,1,8,0xFF,0x3da,4},
- {SDLX16,160,100,160,0xb800,1,8,0xF,0x3da,8},
+ {VGALO,320,200,320,0xa000,1,8,0xFF,0x3da,2},
+ {X16,160,100,160,0xb800,1,8,0xF,0x3da,4},
+ {SDLVGALO,320,200,320,0xa000,1,8,0xFF,0x3da,2},
+ {SDLX16,160,100,160,0xb800,1,8,0xF,0x3da,4},
  {MDA,80,25,80,0xb000,1,8,0xF,0x3ba,0}
 };
 
@@ -36,9 +37,9 @@ bool vga::SDLonce = false;
 
 vga::vga(void)
 {
-	_saved_buffer = new unsigned far char[1];
+	_saved_buffer = NULL;
 #ifndef SDL
-	_os_buffer = new unsigned far char[1];
+	_os_buffer = NULL;
 #else
 	_os_buffer=NULL;
 	_spritescreen=NULL;
@@ -50,7 +51,7 @@ vga::vga(void)
 	_sdlscale=0;
 	_screen=NULL;
 #endif
-	_sprite_buffer = new unsigned far char[1];
+	_sprite_buffer = NULL;
 	sprites=0;
 
 	colors=0;
@@ -91,8 +92,6 @@ vga::vga(void)
 
 vga::~vga(void)
 {
-	delete[] _saved_buffer;
-	delete[] _sprite_buffer;
 #ifdef SDL
 	if (_offscreen) SDL_FreeSurface(_offscreen);
 	if (_screen) SDL_FreeSurface(_screen);
@@ -102,7 +101,9 @@ vga::~vga(void)
 		SDL_Quit();
 	}
 #else
-	delete[] _os_buffer;
+	if (_saved_buffer) delete[] _saved_buffer;
+	if (_sprite_buffer) delete[] _sprite_buffer;
+	if (_os_buffer) delete[] _os_buffer;
 #endif
 }
 
@@ -132,9 +133,6 @@ unsigned char far *vga::allocate_screen_buffer()
 
 bool vga::setup(void)
 {
-#ifndef SDL
-	delete[] _os_buffer;
-#endif
 	for (unsigned long int i=0;i<sizeof(video_modes);i++) {
 		if (video_modes[i].mode == vmode) {
 			_row_bytes = video_modes[i].bytes;
@@ -153,9 +151,6 @@ bool vga::setup(void)
 			_sdlscale = video_modes[i].scale;
 			_offscreen = SDL_CreateRGBSurface(0,_width,_height,8,0,0,0,0);
 			_os_buffer = (unsigned char *)_offscreen->pixels;
-
-			_spritescreen=SDL_CreateRGBSurface(0,_width,_height,8,0,0,0,0);
-			_sprite_buffer=(unsigned char *)_spritescreen->pixels;
 #endif
 			return true;
 		}
@@ -182,7 +177,6 @@ bool vga::setpalette(palette::pal_type pal)
 		sdl_palette->colors[i].b=_palette[i].b;
 	}
 
-//	SDL_SetSurfacePalette(_screen,sdl_palette);
 	SDL_SetSurfacePalette(_offscreen,sdl_palette);
 	SDL_SetSurfacePalette(_spritescreen,sdl_palette);
 
@@ -196,6 +190,9 @@ void vga::initsprites(void)
 {
 #ifndef SDL
 	_sprite_buffer=allocate_screen_buffer();
+#else
+	_spritescreen=SDL_CreateRGBSurface(0,_width,_height,8,0,0,0,0);
+	_sprite_buffer=(unsigned char *)_spritescreen->pixels;
 #endif
 	cls(_sprite_buffer);
 	sprites=1;
@@ -230,14 +227,7 @@ bool vga::sdlmode(Vgamode mode)
             SDL_TEXTUREACCESS_STREAMING,
             _width, _height);
 
-	_screen = SDL_CreateRGBSurface(0,
-	    _width, _height,
-	    32, 0, 0, 0, 0);
-
-	if (vmode == SDLVGALO)
-		setpalette(palette::VGA_PAL);
-	else
-		setpalette(palette::CGA_PAL);
+	_screen = SDL_CreateRGBSurface(0, _width, _height, 32, 0, 0, 0, 0);
 
 	return false;
 #else
@@ -248,6 +238,9 @@ bool vga::sdlmode(Vgamode mode)
 
 bool vga::graphmode(Vgamode mode)
 {
+	if (_os_buffer) delete[] _os_buffer;
+	if (_saved_buffer) delete[] _saved_buffer;
+	if (_sprite_buffer) delete[] _sprite_buffer;
 #ifdef SDL
 	switch (mode) {
 		case VGALO:
@@ -457,34 +450,19 @@ void vga::cls(unsigned char *buf)
 		default:
 			memset((void *)buf,0,buf_size);
 			break;
-		case VGAHI:
-
-			break;
-
 	}
 }
 
 void vga::save_buffer(void)
 {
-	delete _saved_buffer;
+	if (_saved_buffer) delete[] _saved_buffer;
 
 	_saved_buffer = allocate_screen_buffer();
-	switch (vmode) {
-		default:
 #ifndef SDL
-			_fmemcpy(_saved_buffer,&_buffer,_row_bytes*_height*planes);
+	_fmemcpy(_saved_buffer,&_buffer,_row_bytes*_height*planes);
 #else
-			memcpy(_saved_buffer,&_buffer,_row_bytes*_height*planes);
+	memcpy(_saved_buffer,&_buffer,buf_size);
 #endif
-			break;
-		case VGAHI:
-#ifndef SDL
-			_fmemcpy(_saved_buffer,&_buffer,_row_bytes*_height*planes);
-#else
-			memcpy(_saved_buffer,&_buffer,_row_bytes*_height*planes);
-#endif
-			break;
-	}
 }
 
 void vga::restore_buffer(void)
@@ -511,9 +489,6 @@ void vga::update(void)
 void vga::copy_buffer(unsigned char far *src)
 {
 	switch (vmode) {
-		case VGAHI:
-			memory::fast_memcpy(_buffer,src,buf_size); // TODO: calc and plane switch
-			break;
 		default:
 			memory::fast_memcpy(_buffer,src,buf_size);
 			break;
@@ -636,13 +611,10 @@ void vga::translate(unsigned char far *src)
 			pitch);
 	SDL_UnlockTexture(_texture);
 
-	SDL_RenderClear(_renderer);
 	SDL_RenderCopy(_renderer, _texture, NULL, NULL);
 	SDL_RenderPresent(_renderer);
-
 #endif
 }
-
 
 void vga::drawbox(int x,int y,int w,int h,unsigned char color)
 {
@@ -728,13 +700,11 @@ void vga::vsync(void)
 			p=inportb(SR);
 		} while (!(p & 0x80));
 	}
-#else
-	// TODO SDL_GL_SetSwapInterval()
 #endif
 }
 
 void vga::writef(int col, int row, int color, char *format, ...)
-/* Prints a string in video memory at a selected location in a color */
+/* Prints a string in text video memory at a selected location in a color */
 {
 	va_list arg_ptr;
 	char output[81];
@@ -767,8 +737,7 @@ bool vga::kbhit(void)
 	}
 	return false;
 #else
-	if (kbhit()) return true;
-	else return false;
+	return kbhit();
 #endif
 }
 
@@ -796,3 +765,30 @@ int vga::getch(void)
 #endif
 }
 
+/*
+ * SDL routine for implementing input processing loop, since SDL needs to be called a lot of pump events
+ */
+int vga::getEvents(int ms)
+{
+#ifdef SDL
+	while (SDL_WaitEventTimeout(&_event,ms)) {
+		/* an event was found */
+		switch (_event.type) {
+		/* close button clicked */
+		case SDL_QUIT:
+			return -1;
+			break;
+
+			/* handle the keyboard */
+		case SDL_KEYDOWN:
+			return _event.key.keysym.sym;
+			break;
+		}
+	}
+
+	return 0;
+#else
+	delay(ms);
+	return this->kbhit();
+#endif
+}

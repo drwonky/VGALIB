@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 #include "image.h"
 #include "types.h"
 #include "memory.h"
@@ -25,7 +26,6 @@ typedef struct {
 	vga display;
 	unsigned int x,y,w,h,dx,dy;
 	int rot,rotx;
-	bool endprogram;
 } context;
 
 
@@ -58,21 +58,18 @@ void animate(void *arg)
 			ctx->rotx=((ctx->rotx>0)-(ctx->rotx<0))*(rand()%5+1);
 		}
 
+#ifdef __EMSCRIPTEN__
 		if (ctx->display.kbhit()) {
 			printf("Exit...\n");
-#ifdef __EMSCRIPTEN__
 			emscripten_cancel_main_loop();
-#else
-			ctx->endprogram=true;
-#endif
 		}
+#endif
 }
 
 int main(void)
 {
 	context ctx;
 
-	ctx.endprogram=false;
 	ctx.rot=0,ctx.rotx=(rand()%5+1);
 
 	ctx.dx=1;
@@ -115,10 +112,10 @@ int main(void)
 
 	vtext text(ctx.display.width(),ctx.display.height(),0);
 	ctx.mytext.setbg(14);
-	text.drawtext(ctx.mytext,"Mario",4);
+	text.drawtext(ctx.mytext,"VGA DEMO",4);
 
 	if (!mariopng.load("emscripten/assets/mariobg.png")) {
-		printf("Errro loading bg\n");
+		printf("Error loading bg\n");
 		return(1);
 	}
 
@@ -141,13 +138,26 @@ int main(void)
 	printf("Update\n");
 	ctx.display.update();
 
+#ifdef __EMSCRIPTEN__
     int simulate_infinite_loop = 1;
 
-#ifdef __EMSCRIPTEN__
     emscripten_set_main_loop_arg(animate, &ctx, -1, simulate_infinite_loop);
 #else
-    while(!ctx.endprogram)
+    clock_t stime,ntime;
+    int hz=100;
+    int clocks_per_frame=CLOCKS_PER_SEC/hz;
+    int wait;
+    bool endprogram=false;
+
+    do {
+		stime=clock();
 		animate(&ctx);
+		ntime=clock();
+		wait=(clocks_per_frame-(ntime-stime))/1000;
+		if (ctx.display.getEvents(wait) != 0) {
+			endprogram=true;
+		}
+    } while(!endprogram);
 #endif
 
     /**

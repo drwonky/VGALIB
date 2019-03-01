@@ -128,6 +128,7 @@ void translate(unsigned char far *src);
 bool detectMDA(void);
 bool kbhit(void);
 int getch(void);
+int getEvents(int ms);
 
 
 };
