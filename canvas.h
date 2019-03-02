@@ -23,6 +23,7 @@ public:
 	typedef unsigned char pixel_t;
 	typedef char * string_t;
 	ptr_t _buffer;
+	unsigned int _size;
 
 protected:
 	int32_t _width;
@@ -32,6 +33,8 @@ protected:
 
 	palette::pal_t *_palette;
 	int _palette_size;
+
+	bool _usr_buffer;
 
 private:
 	static palette::pal_t *_default_palette;
@@ -44,9 +47,10 @@ protected:
 public:
 	virtual ~canvas();
 	canvas();
-	canvas(int width, int height);
+	canvas(int width, int height, ptr_t buffer = NULL);
 	canvas(const canvas& img);
 	canvas& operator = (const canvas& img);
+	unsigned char& operator [] (const int offset);
 	int bitcnt(uint32_t in);
 	int bitpow(uint32_t in);
 	virtual void free(void);
@@ -60,7 +64,7 @@ public:
 	virtual bool allocate(void);
 	virtual void drawbox(int x, int y, int width, int height, pixel_t color, bool filled = true);
 	virtual void drawimage(int x, int y, canvas& img, bool transparent = false);
-	virtual void drawsprite(int x, int y, canvas& img) {;}
+	virtual void drawsprite(int x, int y, canvas& img) { this->drawimage(x,y,img,true); }
 	virtual void copyto(int x1, int y1, int x2, int y2, int width, int height);
 	virtual void copyto(canvas& src, canvas& dest, int sx, int sy, int dx, int dy, int width, int height);
 	virtual void line(int x1, int y1, int x2, int y2, pixel_t color);
@@ -80,7 +84,7 @@ public:
 	uint32_t inline colordist(palette::pal_t *a, palette::pal_t *b);
 	virtual pixel_t lookuppalentry(palette::pal_t *p);
 	virtual pixel_t findnearestpalentry(palette::pal_t *p);
-	virtual bool size(int width, int height) { if (_buffer) { delete[] _buffer; _buffer=NULL; } _width=width; _height=height; return allocate(); }
+	virtual bool size(int width, int height);
 	virtual void setbg(pixel_t background){ _bgcolor = background; }
 	virtual pixel_t getbg(void) { return _bgcolor; }
 	virtual void rotate(int x, int y, int width, int height, int angle) {;}

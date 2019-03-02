@@ -858,7 +858,7 @@ int main(int argc, char *argv[])
 	png p;
 	image i;
 
-	i.setpalette(palette::RGB_PAL);
+	i.setpalette(palette::VGA_PAL);
 	cout<<"Loading..."<<argv[1]<<endl;
 	if (!p.load(argv[1])) {
 		cout<<"Error loading PNG: "<<p.errormsg()<<endl;

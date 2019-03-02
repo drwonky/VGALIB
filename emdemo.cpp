@@ -20,6 +20,7 @@
 using namespace std;
 
 typedef struct {
+	image bg;
 	image box;
 	image boxc;
 	image mytext;
@@ -33,10 +34,10 @@ void animate(void *arg)
 {
 		context *ctx=(context *)arg;
 
-		ctx->display.syncsprites();
-		ctx->display.drawsprite(ctx->display.width()-ctx->mytext.width(),2,ctx->mytext);
+		ctx->display.screen.drawimage(0,0,ctx->bg);
+		ctx->display.screen.drawsprite(ctx->display.width()-ctx->mytext.width(),2,ctx->mytext);
 		ctx->box.rotate(ctx->boxc,ctx->rot);
-		ctx->display.drawsprite(ctx->x,ctx->y,ctx->boxc);
+		ctx->display.screen.drawsprite(ctx->x,ctx->y,ctx->boxc);
 
 		ctx->display.update();
 		ctx->rot+=ctx->rotx;
@@ -80,14 +81,12 @@ int main(void)
 	printf("Starting...\n");
 
 	ctx.display.graphmode(vga::VGALO);
-	ctx.display.initsprites();
 	ctx.display.cls();
 	ctx.display.setpalette(palette::VGA_PAL);
 	canvas::setdefpalette(ctx.display.getpalette());
 
 	png mariopng;
 	image mario;
-	image bg;
 
 	printf("Loading...\n");
 	if (!mariopng.load("emscripten/assets/mario16.png")) {
@@ -119,12 +118,8 @@ int main(void)
 		return(1);
 	}
 
-	mariopng.convert(bg);
+	mariopng.convert(ctx.bg);
 	mariopng.free();
-	ctx.display.drawimage(0,0,bg);
-	ctx.display.syncsprites();
-	bg.free();
-
 
 	ctx.box.setbg(mario.getbg());
 	ctx.box.clear();
@@ -132,11 +127,6 @@ int main(void)
 	ctx.box.drawimage((ctx.box.width()-mario.width())/2,(ctx.box.height()-mario.height())/2,mario);
 
 	ctx.boxc=ctx.box;
-
-	printf("Draw boxc\n");
-	ctx.display.drawsprite(ctx.x,ctx.y,ctx.boxc);
-	printf("Update\n");
-	ctx.display.update();
 
 #ifdef __EMSCRIPTEN__
     int simulate_infinite_loop = 1;

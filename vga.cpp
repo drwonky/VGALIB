@@ -26,10 +26,10 @@ const vga::video_mode vga::video_modes[] = {
  {TEXT,80,25,80,0xb800,1,8,0xF,0x3da,0},
  {VGAMONO,640,480,80,0xa000,1,1,0x1,0x3da,0},
  {VGAHI,640,480,80,0xa000,4,1,0xF,0x3da,0},
- {VGALO,320,200,320,0xa000,1,8,0xFF,0x3da,2},
- {X16,160,100,160,0xb800,1,8,0xF,0x3da,4},
- {SDLVGALO,320,200,320,0xa000,1,8,0xFF,0x3da,2},
- {SDLX16,160,100,160,0xb800,1,8,0xF,0x3da,4},
+ {VGALO,320,200,320,0xa000,1,8,0xFF,0x3da,4},
+ {X16,160,100,160,0xb800,1,8,0xF,0x3da,8},
+ {SDLVGALO,320,200,320,0xa000,1,8,0xFF,0x3da,4},
+ {SDLX16,160,100,160,0xb800,1,8,0xF,0x3da,8},
  {MDA,80,25,80,0xb000,1,8,0xF,0x3ba,0}
 };
 
@@ -37,22 +37,14 @@ bool vga::SDLonce = false;
 
 vga::vga(void)
 {
-	_saved_buffer = NULL;
-#ifndef SDL
-	_os_buffer = NULL;
-#else
-	_os_buffer=NULL;
-	_spritescreen=NULL;
+#ifdef SDL
 	_window=NULL;
-	_offscreen=NULL;
 	_renderer=NULL;
+	_render=NULL;
 	_texture=NULL;
-	_srcscreen=NULL;
 	_sdlscale=0;
 	_screen=NULL;
 #endif
-	_sprite_buffer = NULL;
-	sprites=0;
 
 	colors=0;
 	_width=0;
@@ -84,7 +76,6 @@ vga::vga(void)
 		SDL_Init(SDL_INIT_VIDEO|SDL_INIT_EVENTS);
 	}
 
-	_offscreen=NULL;
 	card=COLOR;
 #endif
 
@@ -93,37 +84,19 @@ vga::vga(void)
 vga::~vga(void)
 {
 #ifdef SDL
-	if (_offscreen) SDL_FreeSurface(_offscreen);
+//	if (_offscreen) SDL_FreeSurface(_offscreen);
 	if (_screen) SDL_FreeSurface(_screen);
 	if (_texture) SDL_DestroyTexture(_texture);
 	if (SDLonce) {
 		SDL_DestroyWindow( _window );
 		SDL_Quit();
 	}
-#else
-	if (_saved_buffer) delete[] _saved_buffer;
-	if (_sprite_buffer) delete[] _sprite_buffer;
-	if (_os_buffer) delete[] _os_buffer;
 #endif
 }
 
-void vga::debuginfo(void)
+ptr_t vga::allocate_screen_buffer()
 {
-#ifdef __BORLANDC__
-	printf("vmode: %d\n", vmode);
-	printf("buffer: %Fp\n", _buffer);
-	printf("os buffer: %Fp\n", _os_buffer);
-	printf("sprite buffer: %Fp\n", _sprite_buffer);
-	printf("_width: %d\n",_width);
-	printf("_height: %d\n",_height);
-	printf("_row_bytes: %d\n",_row_bytes);
-	printf("buf_size: %lu\n",buf_size);
-#endif
-}
-
-unsigned char far *vga::allocate_screen_buffer()
-{
-	unsigned char far *buf = new unsigned far char [buf_size];
+	ptr_t buf = new unsigned far char [buf_size];
 	if (buf == NULL) {
 		printf ("Null ptr allocating buffer!\n");
 		exit(1);
@@ -146,11 +119,11 @@ bool vga::setup(void)
 			buf_size = _width*_height;
 #ifndef SDL
 			_buffer = (unsigned char far *) MK_FP(video_modes[i].fp,0);
-			_os_buffer = allocate_screen_buffer();
+			screen.size(_width,_height);
 #else
 			_sdlscale = video_modes[i].scale;
-			_offscreen = SDL_CreateRGBSurface(0,_width,_height,8,0,0,0,0);
-			_os_buffer = (unsigned char *)_offscreen->pixels;
+			_render = SDL_CreateRGBSurface(0,_width,_height,8,0,0,0,0);
+			screen = canvas(_width,_height,(ptr_t)_render->pixels);
 #endif
 			return true;
 		}
@@ -177,25 +150,13 @@ bool vga::setpalette(palette::pal_type pal)
 		sdl_palette->colors[i].b=_palette[i].b;
 	}
 
-	SDL_SetSurfacePalette(_offscreen,sdl_palette);
-	SDL_SetSurfacePalette(_spritescreen,sdl_palette);
+	SDL_SetSurfacePalette(_render,sdl_palette);
+//	SDL_SetSurfacePalette(_spritescreen,sdl_palette);
 
 	SDL_FreePalette(sdl_palette);
 #endif
 
 	return true;
-}
-
-void vga::initsprites(void)
-{
-#ifndef SDL
-	_sprite_buffer=allocate_screen_buffer();
-#else
-	_spritescreen=SDL_CreateRGBSurface(0,_width,_height,8,0,0,0,0);
-	_sprite_buffer=(unsigned char *)_spritescreen->pixels;
-#endif
-	cls(_sprite_buffer);
-	sprites=1;
 }
 
 bool vga::graphmode(void)
@@ -238,9 +199,6 @@ bool vga::sdlmode(Vgamode mode)
 
 bool vga::graphmode(Vgamode mode)
 {
-	if (_os_buffer) delete[] _os_buffer;
-	if (_saved_buffer) delete[] _saved_buffer;
-	if (_sprite_buffer) delete[] _sprite_buffer;
 #ifdef SDL
 	switch (mode) {
 		case VGALO:
@@ -404,17 +362,17 @@ void vga::setpixel(int x, int y, unsigned char visible)
 		case VGAMONO:
 			plane_offset=(y*_row_bytes)+(x>>3);
 			bit=(7-(x&7));
-			temp=_os_buffer[plane_offset];
+			temp=screen._buffer[plane_offset];
 			temp=temp&(255^(1<<bit));
 			temp=temp|(visible<<bit);
-			_os_buffer[plane_offset]=temp;
+			screen._buffer[plane_offset]=temp;
 			break;
 		case VGAHI:
 
 			break;
 		default:
 			plane_offset=(y*_row_bytes)+(x);
-			_os_buffer[plane_offset]=visible;
+			screen._buffer[plane_offset]=visible;
 			break;
 	}
 }
@@ -426,113 +384,28 @@ unsigned char vga::getpixel(int x, int y)
 	switch (vmode) {
 		case VGAMONO:
 			plane_offset=(y*_row_bytes)+(x>>3);
-			return((_os_buffer[plane_offset]&(7-(x&7)))>>(7-(x&7)));
+			return((screen._buffer[plane_offset]&(7-(x&7)))>>(7-(x&7)));
 		case VGAHI:
 			break;
 		case TEXT:
 			plane_offset=(y*_row_bytes)+(x<<1);
-			return(_os_buffer[plane_offset]);
+			return(screen._buffer[plane_offset]);
 		default:
 			plane_offset=(y*_row_bytes)+(x);
-			return(_os_buffer[plane_offset]);
+			return(screen._buffer[plane_offset]);
 	}
 	return 0;
 }
 
 void vga::cls(void)
 {
-	cls(_os_buffer);
-}
-
-void vga::cls(unsigned char *buf)
-{
-	switch (vmode) {
-		default:
-			memset((void *)buf,0,buf_size);
-			break;
-	}
-}
-
-void vga::save_buffer(void)
-{
-	if (_saved_buffer) delete[] _saved_buffer;
-
-	_saved_buffer = allocate_screen_buffer();
-#ifndef SDL
-	_fmemcpy(_saved_buffer,&_buffer,_row_bytes*_height*planes);
-#else
-	memcpy(_saved_buffer,&_buffer,buf_size);
-#endif
-}
-
-void vga::restore_buffer(void)
-{
-	copy_buffer(_saved_buffer);
-}
-
-void vga::syncsprites(void)
-{
-	memory::blit(_sprite_buffer,_os_buffer,buf_size);
+	screen.clear();
 }
 
 void vga::update(void)
 {
-	if (sprites) {
-		vsync();
-		translate(_sprite_buffer);
-	} else {
-		vsync();
-		translate(_os_buffer);
-	}
-}
-
-void vga::copy_buffer(unsigned char far *src)
-{
-	switch (vmode) {
-		default:
-			memory::fast_memcpy(_buffer,src,buf_size);
-			break;
-	}
-}
-
-void vga::copyto(unsigned int x, unsigned int y, unsigned int x1, unsigned int y1, unsigned int w, unsigned int h)
-{
-	static unsigned int src,rem,dest,cnt;
-	unsigned char far *tmp;
-
-	if (x1>_width-1 || y1>_height) return;
-
-	w=x1+w > _width ? _width-x1 : w;
-	h=y1+h > _height ? _height-y1 : h;
-	switch (vmode) {
-		default:
-			src=y*_row_bytes+(x*Bpp);
-			dest=y1*_row_bytes+(x1*Bpp);
-			cnt=h;
-			tmp=new unsigned char[w*h*Bpp];
-			rem=0;
-			while(cnt) {
-				memory::fast_memcpy(&tmp[rem],&_os_buffer[src],w*Bpp);
-				rem+=w*Bpp;
-				src+=_row_bytes;
-				cnt--;
-			}
-			cnt=h;
-			rem=0;
-			while(cnt) {
-				memory::fast_memcpy(&_os_buffer[dest],&tmp[rem],w*Bpp);
-				dest+=_row_bytes;
-				rem+=w*Bpp;
-				cnt--;
-			}
-			delete[] tmp;
-			break;
-		case VGAMONO:
-			break;
-		case VGAHI:
-			//_fmemcpy(buffer,src,buf_size); // TODO: calc and plane switch
-			break;
-	}
+	vsync();
+	translate(screen._buffer);
 }
 
 void vga::translate(unsigned char far *src)
@@ -598,12 +471,7 @@ void vga::translate(unsigned char far *src)
 	void *pixels;
 	int pitch;
 
-	if (sprites) {
-		_srcscreen=_spritescreen;
-	} else {
-		_srcscreen=_offscreen;
-	}
-	SDL_BlitSurface(_srcscreen, NULL, _screen, NULL);
+	SDL_BlitSurface(_render, NULL, _screen, NULL);
 
 	SDL_LockTexture(_texture, NULL, &pixels, &pitch);
 	SDL_ConvertPixels(_screen->w, _screen->h, _screen->format->format,
@@ -614,68 +482,6 @@ void vga::translate(unsigned char far *src)
 	SDL_RenderCopy(_renderer, _texture, NULL, NULL);
 	SDL_RenderPresent(_renderer);
 #endif
-}
-
-void vga::drawbox(int x,int y,int w,int h,unsigned char color)
-{
-	int x1,y1;
-	for(y1=y;y1<y+h;y1++)
-	{
-		for(x1=x;x1<x+w;x1++)
-		{
-			 setpixel(x1,y1,color);
-		}
-	}
-}
-
-void vga::drawimage(unsigned int x, unsigned int y, image& img)
-{
-	unsigned int rem,dest,cnt,w,h,iw;
-
-	iw=w=img.width();
-	h=img.height();
-
-	if (x>_width-1 || y>_height-1) return;
-
-	w=x+w > _width-1 ? _width-x : w;
-	h=y+h > _height-1 ? _height-y : h;
-	dest=y*_row_bytes+x;
-	cnt=h;
-	rem=0;
-	while(cnt) {
-		memory::fast_memcpy(&_os_buffer[dest],&img._buffer[rem],w);
-		dest+=_row_bytes;
-		rem+=iw;
-		cnt--;
-	}
-}
-
-void vga::drawsprite(unsigned int x, unsigned int y, image& img)
-{
-	drawsprite(x,y,img,img.getbg());
-}
-
-void vga::drawsprite(unsigned int x, unsigned int y, image& img, unsigned char mask)
-{
-	unsigned int cnt,w,h,iw;
-	unsigned char far *s,*d;
-
-	iw=w=img.width();
-	h=img.height();
-
-	if (x>_width-1 || y>_height-1) return;
-
-	w=x+w > _width-1 ? _width-x : w;
-	h=y+h > _height-1 ? _height-y : h;
-	cnt=h;
-	d=&_sprite_buffer[y*_row_bytes+x];
-	s=img._buffer;
-	while(cnt) {
-		memory::mask_memcpy(d,s,w,mask);
-		d+=_row_bytes;
-		s+=iw;
-		cnt--;
-	}
 }
 
 void vga::vsync(void)

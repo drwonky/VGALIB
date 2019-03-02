@@ -49,35 +49,32 @@ unsigned int scale;
 
 static const video_mode video_modes[];
 
+canvas screen;
+
 protected:
 #ifdef SDL
 	SDL_Window* _window;
 	SDL_Surface* _screen;
-	SDL_Surface* _srcscreen;
-	SDL_Surface* _offscreen;
-	SDL_Surface* _spritescreen;
 	SDL_Renderer* _renderer;
+	SDL_Surface* _render;
 	SDL_Texture* _texture;
 	SDL_Event _event;
 	unsigned int _sdlscale;
 #endif
-unsigned char far *_buffer;
-unsigned char far *_saved_buffer;
-unsigned char far *_os_buffer;
-unsigned char far *_sprite_buffer;
+
+ptr_t _buffer;	// primary screen framebuffer
+unsigned int _row_bytes;
 unsigned int _width;
 unsigned int _height;
-unsigned int _row_bytes;
 uint32_t buf_size;
 unsigned char bpp;
 unsigned char Bpp;
 Vgamode vmode;
 unsigned int SR;
 enum { MONO, COLOR} card;
-unsigned char sprites;
-int _palette_size;
-palette::pal_t *_palette;
 palette::pal_type _cur_palette;
+palette::pal_t *_palette;
+int _palette_size;
 
 public:
 unsigned char colors;
@@ -96,10 +93,10 @@ public:
 vga(void);
 ~vga(void);
 bool setup(void);
-void initsprites(void);
-void debuginfo(void);
 bool setpalette(palette::pal_type pal);
 palette::pal_type getpalette(void) { return _cur_palette; }
+int width(void) { return _width; }
+int height(void) { return _height; }
 bool sdlmode(Vgamode mode);
 bool graphmode(void);
 bool graphmode(Vgamode mode);
@@ -108,19 +105,7 @@ bool mdamode(void);
 void setpixel(int x, int y, unsigned char visible);
 unsigned char getpixel(int x, int y);
 void cls(void);
-void cls(unsigned char *buf);
-unsigned int width(void) { return(_width); }
-unsigned int height(void) { return(_height); }
-void save_buffer(void);
-void restore_buffer(void);
-unsigned char far *allocate_screen_buffer();
-void copy_buffer(unsigned char *src);
-void copyto(unsigned int x, unsigned int y, unsigned int x1, unsigned int y1, unsigned int w, unsigned int h);
-void drawbox(int x,int y,int w,int h,unsigned char color);
-void drawimage(unsigned int x, unsigned int y, image& img);
-void drawsprite(unsigned int x, unsigned int y, image& img);
-void drawsprite(unsigned int x, unsigned int y, image& img, unsigned char mask);
-void syncsprites(void);
+ptr_t allocate_screen_buffer();
 void update(void);
 void vsync(void);
 void writef(int col, int row, int color, char *format, ...);

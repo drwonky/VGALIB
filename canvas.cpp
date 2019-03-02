@@ -23,10 +23,14 @@ canvas::~canvas()
 
 void canvas::free(void)
 {
-	if (_buffer) delete[] _buffer;
-	if (_palette) delete[] _palette;
-	_buffer=NULL;
-	_palette=NULL;
+	if (_buffer && !_usr_buffer) {
+		delete[] _buffer;
+		_buffer=NULL;
+	}
+	if (_palette) {
+		delete[] _palette;
+		_palette=NULL;
+	}
 }
 
 canvas::canvas()
@@ -34,9 +38,16 @@ canvas::canvas()
 	initvars();
 }
 
-canvas::canvas(int width, int height)
+/*
+ * User supplied memory buffer ptr (for SDL surfaces)
+ */
+canvas::canvas(int width, int height, ptr_t buffer)
 {
 	initvars();
+	if (buffer) {
+		_usr_buffer = true;
+		_buffer = buffer;
+	}
 	size(width,height);
 }
 
@@ -53,22 +64,36 @@ canvas::canvas(const canvas& img)
 
 canvas& canvas::operator = (const canvas& img)
 {
+	_size=img._size;
 	_width=img._width;
 	_height=img._height;
+	_colors=img._colors;
 	_bgcolor=img._bgcolor;
-	if (_buffer) {
+
+	if (_buffer && !_usr_buffer) {
 		delete[] _buffer;
-		_buffer = NULL;
+		this->_buffer = NULL;
+	}
+
+	if (img._usr_buffer) {
+		_buffer = img._buffer;
+		_usr_buffer=true;
 	}
 	copypalette(img);
 	allocate();
-	memory::fast_memcpy(_buffer,img._buffer,_width*_height);
+	if (!img._usr_buffer) memory::fast_memcpy(_buffer,img._buffer,_width*_height);
 
 	return *this;
 }
 
+unsigned char& canvas::operator [] (const int offset)
+{
+	return this->_buffer[offset];
+}
+
 void canvas::initvars(void)
 {
+	_size=0;
 	_width=0;
 	_height=0;
 	_colors=0;
@@ -76,6 +101,21 @@ void canvas::initvars(void)
 	_buffer=NULL;
 	_palette=NULL;
 	_palette_size=0;
+	_usr_buffer=false;
+}
+
+bool canvas::size(int width, int height)
+{
+	if (_buffer && !_usr_buffer) {
+		delete[] _buffer;
+		_buffer=NULL;
+	}
+	_width=width;
+	_height=height;
+
+	_size=_width*_height;
+
+	return allocate();
 }
 
 int canvas::bitcnt(uint32_t in) // count how many bits are high in a number, useful for knowing if a number is the power of 2
@@ -105,7 +145,9 @@ int canvas::bitpow(uint32_t in) // convert power of 2 decimal to bit shift count
 
 bool canvas::allocate(void)
 {
-	_buffer=new unsigned far char [_width*_height];
+	if (!_usr_buffer) {
+		_buffer=new unsigned far char [_width*_height];
+	}
 
 	if(_buffer) this->clear();
 
@@ -386,6 +428,8 @@ void canvas::rotate(int angle)
 
 bool canvas::copypalette(const canvas& img)
 {
+	if (_palette == img._palette) return true; // default palette is statically allocated
+
 	_palette_size=img.palette_size();
 	if (_palette) delete[] _palette;
 
@@ -568,29 +612,35 @@ void canvas::scaleDCCI(canvas& img)
 
 void canvas::drawimage(int x, int y, canvas& img, bool transparent)
 {
-	int32_t rem,dest,cnt,w,h,iw;
+	int32_t cnt,w,h,iw;
+	ptr_t rem,dest;
 
 	iw=w=img.width();
 	h=img.height();
 
 	if (x>_width-1 || y>_height-1 || x<0 || y<0) return;
 
+	if (x==0 && y==0 && w==_width && h==_height) {  // shortcut for block copies
+		memory::blit(_buffer,img._buffer,_size);
+		return;
+	}
+
 	w=x+w > _width-1 ? _width-x : w;
 	h=y+h > _height-1 ? _height-y : h;
-	dest=y*_width+x;
+	dest=_buffer+(y*_width+x);
 	cnt=h;
-	rem=0;
+	rem=img._buffer;
 
 	if (transparent) {
 		while(cnt) {
-			memory::mask_memcpy(&_buffer[dest],&img._buffer[rem],w,img.getbg());
+			memory::mask_memcpy(dest,rem,w,img.getbg());
 			dest+=_width;
 			rem+=iw;
 			cnt--;
 		}
 	} else {
 		while(cnt) {
-			memory::fast_memcpy(&_buffer[dest],&img._buffer[rem],w);
+			memory::fast_memcpy(dest,rem,w);
 			dest+=_width;
 			rem+=iw;
 			cnt--;
