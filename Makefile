@@ -9,7 +9,7 @@ CC = gcc
 CXX = g++
 
 EXX = em++
-EMFLAGS = --preload-file emscripten/assets --shell-file shell_minimal.html -s USE_ZLIB=1 -s USE_SDL=2
+EMFLAGS = -O2 --preload-file emscripten/assets --shell-file shell_minimal.html -s USE_ZLIB=1 -s USE_SDL=2
 
 SRCDEP = emdemo.cpp emx16demo.cpp vga.cpp png.cpp image.cpp memory.cpp vtext.cpp palettes.cpp canvas.cpp
 SRC = vga.cpp png.cpp image.cpp memory.cpp vtext.cpp palettes.cpp canvas.cpp

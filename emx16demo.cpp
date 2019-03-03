@@ -19,13 +19,13 @@
 using namespace std;
 
 typedef struct {
-	image bg;
-	image box;
-	image boxc;
-	image mytext;
+	image score;
+	image playfield;
+	image ball;
+	image ballr;
 	vga display;
 	unsigned int x,y,w,h,dx,dy;
-	int rot,rotx;
+	int rot,rotframes;
 } context;
 
 
@@ -33,29 +33,26 @@ void animate(void *arg)
 {
 		context *ctx=(context *)arg;
 
-		ctx->display.screen.drawimage(0,0,ctx->bg);
-		ctx->display.screen.drawsprite(ctx->display.width()-ctx->mytext.width(),2,ctx->mytext);
-		ctx->box.rotate(ctx->boxc,ctx->rot);
-		ctx->display.screen.drawsprite(ctx->x,ctx->y,ctx->boxc);
+		ctx->display.screen.drawimage(0,0,ctx->score);
+		ctx->display.screen.drawimage(0,20,ctx->playfield);
+		ctx->ball.rotate(ctx->ballr,ctx->rot);
+		ctx->display.screen.drawsprite(ctx->x,ctx->y,ctx->ballr);
 
 		ctx->display.update();
-		ctx->rot+=ctx->rotx;
+		ctx->rotframes++;
+		if(ctx->rotframes%5 == 0)
+			ctx->rot+=45;
 		if(ctx->rot>360) ctx->rot=0;
-		if(ctx->rot<0) ctx->rot=360;
 
 		ctx->x+=ctx->dx;
 		ctx->y+=ctx->dy;
 
 		if(ctx->x>ctx->display.width()-ctx->w-1 || ctx->x<1) {
 			ctx->dx*=-1;
-			ctx->rotx*=-1;
-			ctx->rotx=((ctx->rotx>0)-(ctx->rotx<0))*(rand()%5+1);
 		}
 
-		if(ctx->y>ctx->display.height()-ctx->h-1 || ctx->y<1) {
+		if(ctx->y>ctx->display.height()-ctx->h-1 || ctx->y<20) {
 			ctx->dy*=-1;
-			ctx->rotx*=-1;
-			ctx->rotx=((ctx->rotx>0)-(ctx->rotx<0))*(rand()%5+1);
 		}
 
 #ifdef __EMSCRIPTEN__
@@ -70,12 +67,12 @@ int main(void)
 {
 	context ctx;
 
-	ctx.rot=0,ctx.rotx=(rand()%5+1);
+	ctx.rot=0,ctx.rotframes=0;
 
 	ctx.dx=1;
 	ctx.dy=1;
 	ctx.x=0;
-	ctx.y=0;
+	ctx.y=20;
 
 	printf("Starting...\n");
 
@@ -84,46 +81,23 @@ int main(void)
 	ctx.display.setpalette(palette::CGA_PAL);
 	canvas::setdefpalette(ctx.display.getpalette());
 
-	png mariopng;
-	image mario;
-
 	printf("Loading...\n");
-	if (!mariopng.load("emscripten/assets/dopefish.png")) {
+	png asset;
+
+	printf("Loading assets...\n");
+	if (!(asset.loadimage("emscripten/assets/score.png",ctx.score) &&
+		asset.loadimage("emscripten/assets/playfield.png",ctx.playfield) &&
+		asset.loadimage("emscripten/assets/ball.png",ctx.ball))) {
 		printf("Error loading sprite\n");
 		return(1);
 	}
 
-	printf("Convert...\n");
-	mariopng.convert(mario);
-	printf("Free...\n");
-	mariopng.free();
+	asset.free();
 
-	ctx.w=mario.width();
-	ctx.h=mario.height();
+	ctx.w=ctx.ball.width();
+	ctx.h=ctx.ball.height();
 
-	ctx.box.size(ctx.w,ctx.h);
-
-	printf("Building...\n");
-
-	vtext text(ctx.display.width(),ctx.display.height(),0);
-	ctx.mytext.setbg(14);
-	text.drawtext(ctx.mytext,"160x100 DEMO",13);
-
-	if (!mariopng.load("emscripten/assets/keen4.png")) {
-		printf("Error loading bg\n");
-		return(1);
-	}
-
-	mariopng.convert(ctx.bg);
-	mariopng.free();
-	ctx.display.screen.drawimage(0,0,ctx.bg);
-
-	ctx.box.setbg(mario.getbg());
-	ctx.box.clear();
-	ctx.box.copypalette(mario);
-	ctx.box.drawimage((ctx.box.width()-mario.width())/2,(ctx.box.height()-mario.height())/2,mario);
-
-	ctx.boxc=ctx.box;
+	ctx.ballr=ctx.ball;
 
 #ifdef __EMSCRIPTEN__
     int simulate_infinite_loop = 1;
@@ -131,16 +105,19 @@ int main(void)
     emscripten_set_main_loop_arg(animate, &ctx, -1, simulate_infinite_loop);
 #else
     clock_t stime,ntime;
-    int hz=100;		// Target event rate, vsync is what actually controls our speed
+    int hz=100;		// Target event rate, vsync is what actually controls our speed, this delay is just how long we wait for events, ensuring the render loop always has priority
     int clocks_per_frame=CLOCKS_PER_SEC/hz;
     int wait;
     bool endprogram=false;
+
+    ctx.display.getEvents(20);  // debounce
 
     do {
 		stime=clock();
 		animate(&ctx);
 		ntime=clock();
-		wait=(clocks_per_frame-(ntime-stime))/1000;  // generate accurate target times in the future
+		wait=(clocks_per_frame-(ntime-stime))/1000;	// generate accurate target times in the future
+		wait=wait<0?0:wait;							// If render took too long it will result in negative wait.
 		if (ctx.display.getEvents(wait) != 0) {
 			endprogram=true;
 		}
