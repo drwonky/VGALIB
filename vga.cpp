@@ -84,10 +84,10 @@ vga::vga(void)
 vga::~vga(void)
 {
 #ifdef SDL
-//	if (_offscreen) SDL_FreeSurface(_offscreen);
-	if (_screen) SDL_FreeSurface(_screen);
-	if (_texture) SDL_DestroyTexture(_texture);
 	if (SDLonce) {
+		if (_render) SDL_FreeSurface(_render);
+		if (_screen) SDL_FreeSurface(_screen);
+		if (_texture) SDL_DestroyTexture(_texture);
 		SDL_DestroyWindow( _window );
 		SDL_Quit();
 	}
@@ -184,9 +184,11 @@ bool vga::sdlmode(Vgamode mode)
 	SDL_RenderClear(_renderer);
 	SDL_RenderSetLogicalSize(_renderer, _width, _height);
 	_texture = SDL_CreateTexture(_renderer,
-			SDL_PIXELFORMAT_RGBA8888,
+			SDL_PIXELFORMAT_ARGB8888,
             SDL_TEXTUREACCESS_STREAMING,
             _width, _height);
+
+	SDL_SetRenderTarget(_renderer, _texture);
 
 	_screen = SDL_CreateRGBSurface(0, _width, _height, 32, 0, 0, 0, 0);
 
@@ -474,8 +476,9 @@ void vga::translate(unsigned char far *src)
 	SDL_BlitSurface(_render, NULL, _screen, NULL);
 
 	SDL_LockTexture(_texture, NULL, &pixels, &pitch);
+
 	SDL_ConvertPixels(_screen->w, _screen->h, _screen->format->format,
-			_screen->pixels, _screen->pitch, SDL_PIXELFORMAT_RGBA8888, pixels,
+			_screen->pixels, _screen->pitch, SDL_PIXELFORMAT_ARGB8888, pixels,
 			pitch);
 	SDL_UnlockTexture(_texture);
 
