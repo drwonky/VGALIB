@@ -99,6 +99,8 @@ void png::printhex(unsigned char *buf)
 
 	b=bytes_per_scanline()+1;
 
+	printf("%d bytes per scanline\n",b);
+
 	printf("    ");
 	for (i=0;i<b;i++) {
 		printf("%2d ",i);
@@ -118,7 +120,7 @@ int png::bytes_per_scanline(void)
 	switch(_colors) {
 		case GRAY:
 		case INDEXED:
-			return _width*_depth/8;
+			return ((_width*_depth)+(_width*_depth%8))/8;
 		case RGB:
 			return _width*_depth*3/8;
 		case GRAYA:
@@ -149,7 +151,9 @@ bool png::allocate_img_buffer(void)
 
 bool png::load(const char *file)
 {
-	_buffer = new char[BUFSIZE];
+	free(); // save caller some time
+
+	if (!_buffer) _buffer = new char[BUFSIZE];
 
 	if (!_buffer) {
 		cerr << "Error allocating file buffer"<<endl;
@@ -513,10 +517,10 @@ void png::filter(void)
 	int x,y,b;
 	unsigned char p,q,r,s,t;
 	unsigned char filt;
-	unsigned char *prior;
+	unsigned char *prior=_image_buffer;
 
 	debug(cout<<"Bpp "<<_bpp<<endl;)
-//	printhex(_image_buffer);
+	debug(printhex(_image_buffer);)
 
 	b=_scanline_size+1; // the first byte of a scanline is the filter type byte, this must be figured into address calculation
 
@@ -544,7 +548,7 @@ void png::filter(void)
 		debug(cout<<std::dec<<"line "<<y<<" Filter type "<<(int)filt<<endl;)
 		switch(filt) {
 		case 0: //none
-			continue;
+			break;
 		case 1: //sub
 			for (x=1;x<b;x++) { // skip filter byte
 				q=x<_bpp+1? 0 :_image_buffer[(y*b)+x-_bpp];
@@ -585,6 +589,7 @@ void png::filter(void)
 			}
 			break;
 		}
+		debug(cout<<std::dec<<"y "<<y<<" b "<<b<<endl;)
 		prior=&_image_buffer[y*b];
 	}
 }
@@ -604,7 +609,7 @@ bool png::convert(image& img)
 		return false;
 	}
 
-//	printhex(_image_buffer);
+	debug(printhex(_image_buffer);)
 
 	bool small_image=(_width*_height<512*512) ? true : false;  // a bit of optimization to reduce the cost of quantizing colors of RGB images, the threshold tradeoff is 512x512
 
@@ -815,6 +820,17 @@ bool png::convert(image& img)
 				case 1:
 					break;
 				case 2:
+					for (y=0;y<img.height();y++) {
+						i=0;
+						for(x=0;x<img.width();x++) {
+							p=_image_buffer[y*(_scanline_size+1)+1+i];
+							debug(printf("pel: i %d %02x\n",i,p);)
+							int shift=( p >> ((3-(x&3))*2)) &0x03;
+							img._buffer[y*img.width()+x]=pemap[shift];
+							debug(printf("img[%02d][%02d]: %02x\n",y,x,img._buffer[y*img.width()+x]);)
+							if ((x+1)%4==0) i++;
+						}
+					}
 					break;
 				case 4:
 					i=0;
