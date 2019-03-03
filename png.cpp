@@ -825,8 +825,7 @@ bool png::convert(image& img)
 						for(x=0;x<img.width();x++) {
 							p=_image_buffer[y*(_scanline_size+1)+1+i];
 							debug(printf("pel: i %d %02x\n",i,p);)
-							int shift=( p >> ((3-(x&3))*2)) &0x03;
-							img._buffer[y*img.width()+x]=pemap[shift];
+							img._buffer[y*img.width()+x]=pemap[( p >> ((3-(x&3))*2)) &0x03];
 							debug(printf("img[%02d][%02d]: %02x\n",y,x,img._buffer[y*img.width()+x]);)
 							if ((x+1)%4==0) i++;
 						}
