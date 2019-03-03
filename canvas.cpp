@@ -620,16 +620,57 @@ void canvas::drawimage(int x, int y, canvas& img, bool transparent)
 
 	if (x>_width-1 || y>_height-1 || x<0 || y<0) return;
 
-	if (x==0 && y==0 && w==_width && h==_height) {  // shortcut for block copies
-		memory::blit(_buffer,img._buffer,_size);
+	dest=_buffer+(y*_width+x);
+	rem=img._buffer;
+
+	if (x==0 && w==_width) {  // src is same width as dest, can just do partial or full block copy
+		memory::blit(dest,rem,img._size);
 		return;
 	}
 
+	// This implements clipping
 	w=x+w > _width-1 ? _width-x : w;
 	h=y+h > _height-1 ? _height-y : h;
-	dest=_buffer+(y*_width+x);
 	cnt=h;
-	rem=img._buffer;
+
+	if (transparent) {
+		while(cnt) {
+			memory::mask_memcpy(dest,rem,w,img.getbg());
+			dest+=_width;
+			rem+=iw;
+			cnt--;
+		}
+	} else {
+		while(cnt) {
+			memory::fast_memcpy(dest,rem,w);
+			dest+=_width;
+			rem+=iw;
+			cnt--;
+		}
+	}
+}
+
+/*
+ * Source image wider or taller than destination, allows for panning
+ */
+void canvas::drawimage(int x, int y, int sx, int sy, int width, int height, canvas& img, bool transparent)
+{
+	int32_t cnt,w,h,iw;
+	ptr_t rem,dest;
+
+	iw=img.width();
+	w=width;
+	h=height;
+
+	if (x>_width-1 || y>_height-1 || x<0 || y<0) return;
+
+	dest=_buffer+(y*_width+x);
+	rem=img._buffer+(sy*img.width()+sx);
+
+	// This implements clipping
+	w=x+w > _width-1 ? _width-x : w;
+	h=y+h > _height-1 ? _height-y : h;
+	cnt=h;
 
 	if (transparent) {
 		while(cnt) {

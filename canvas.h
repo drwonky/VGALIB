@@ -64,6 +64,7 @@ public:
 	virtual bool allocate(void);
 	virtual void drawbox(int x, int y, int width, int height, pixel_t color, bool filled = true);
 	virtual void drawimage(int x, int y, canvas& img, bool transparent = false);
+	virtual void drawimage(int x, int y, int sx, int sy, int width, int height, canvas& img, bool transparent = false);
 	virtual void drawsprite(int x, int y, canvas& img) { this->drawimage(x,y,img,true); }
 	virtual void copyto(int x1, int y1, int x2, int y2, int width, int height);
 	virtual void copyto(canvas& src, canvas& dest, int sx, int sy, int dx, int dy, int width, int height);
