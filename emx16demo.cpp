@@ -104,20 +104,23 @@ int main(void)
 
     emscripten_set_main_loop_arg(animate, &ctx, -1, simulate_infinite_loop);
 #else
-    clock_t stime,ntime;
-    int hz=100;		// Target event rate, vsync is what actually controls our speed, this delay is just how long we wait for events, ensuring the render loop always has priority
-    int clocks_per_frame=CLOCKS_PER_SEC/hz;
+    uint32_t start_time,end_time,sched_time;
+    int hz=60;		// Target event rate, vsync is what actually controls our speed, this delay is just how long we wait for events, ensuring the render loop always has priority
+    int clocks_per_frame=1000/hz;
     int wait;
     bool endprogram=false;
 
     ctx.display.getEvents(20);  // debounce
 
     do {
-		stime=clock();
+		start_time=SDL_GetTicks();
+		sched_time=start_time+clocks_per_frame;
 		animate(&ctx);
-		ntime=clock();
-		wait=(clocks_per_frame-(ntime-stime))/1000;	// generate accurate target times in the future
+		end_time=SDL_GetTicks();
+//		wait=(clocks_per_frame-(ntime-stime))/1000;	// generate accurate target times in the future
+		wait=(sched_time - end_time);
 		wait=wait<0?0:wait;							// If render took too long it will result in negative wait.
+//		cout <<"wait delay "<<wait<<" start "<<start_time<<" sched "<<sched_time<<" end "<<end_time<<" clocks "<<clocks_per_frame<<endl;
 		if (ctx.display.getEvents(wait) != 0) {
 			endprogram=true;
 		}

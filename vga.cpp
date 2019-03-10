@@ -580,7 +580,14 @@ int vga::getch(void)
 int vga::getEvents(int ms)
 {
 #ifdef SDL
-	while (SDL_WaitEventTimeout(&_event,ms)) {
+	uint32_t start_time, sched_time;
+
+	start_time=SDL_GetTicks();
+	sched_time=start_time+ms;
+
+	do {
+		if (SDL_PollEvent(&_event)) {
+//		SDL_WaitEventTimeout(&_event,ms);
 		/* an event was found */
 		switch (_event.type) {
 		/* close button clicked */
@@ -592,8 +599,12 @@ int vga::getEvents(int ms)
 		case SDL_KEYDOWN:
 			return _event.key.keysym.sym;
 			break;
+		default:
+//			return 0;
+			break;
+			}
 		}
-	}
+	} while (SDL_GetTicks() < sched_time);
 
 	return 0;
 #else
