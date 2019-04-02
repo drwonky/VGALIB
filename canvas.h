@@ -51,7 +51,7 @@ public:
 	canvas(const canvas& img);
 	canvas& operator = (const canvas& img);
 	unsigned char& operator [] (const int offset);
-	int bitcnt(uint32_t in);
+	bool pow2(uint32_t in);
 	int bitpow(uint32_t in);
 	virtual void free(void);
 	virtual bool copybuffer(ptr_t *src) { return true; }

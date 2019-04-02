@@ -118,17 +118,9 @@ bool canvas::size(int width, int height)
 	return allocate();
 }
 
-int canvas::bitcnt(uint32_t in) // count how many bits are high in a number, useful for knowing if a number is the power of 2
+bool canvas::pow2(uint32_t in) // count how many bits are high in a number, useful for knowing if a number is the power of 2
 {
-	int count=0;
-
-	if (in==0) return count;
-
-	for(long unsigned int i=0;i<sizeof(in)*8;i++) {
-		count+=in&1;
-		in>>=1;
-	}
-	return count;
+	return (in & (in - 1)) == 0;
 }
 
 int canvas::bitpow(uint32_t in) // convert power of 2 decimal to bit shift count
@@ -549,12 +541,11 @@ void canvas::scale(canvas& img)
 
 	// if the scale factor is 2 or greater and a power of 2..4..8..16
 	if (_width>src_width && _height>src_height &&  // redundant checks that quickly filter out scaling up from scaling down, allows compiler to bail quicker
-			(scale_factor&1) == 0 // must be 2 or greater
-//			(scale_factor&1) == 0 && // must be 2 or greater
+		(scale_factor&1) == 0 && // must be 2 or greater
+		pow2(scale_factor) // is exactly a power of 2
 //			(_width%src_width) == 0 && // no fractional scaling
 //			(scale_factor == (_height/src_height)) && // x and y scaling are same
-//			bitcnt(scale_factor) == 1 // is exactly a power of 2
-			) {
+	) {
 		int32_t scale_shift=bitpow(scale_factor); // convert decimal scale factor to bit shift
 
 		for (y=0;y<_height;y+=scale_factor) {
