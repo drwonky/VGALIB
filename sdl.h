@@ -5,44 +5,53 @@
  *      Author: pedward
  */
 
-#ifndef VGA_H_
-#define VGA_H_
+#ifndef SDL_H_
+#define SDL_H_
 
-#ifdef __BORLANDC__
-#define KBHIT kbhit
-#include <dos.h>
-#include <conio.h>
-#endif
+#ifdef __GNUC__
+#include <SDL2/SDL.h>
+#define KBHIT display->kbhit
 
 #include "image.h"
 #include "adapter.h"
 
-class vga : public adapter
+class sdl: public adapter
 {
 protected:
+	SDL_Window* _window;
+	SDL_Surface* _screen;
+	SDL_Renderer* _renderer;
+	SDL_Surface* _render;
+	SDL_Texture* _texture;
+	SDL_Event _event;
+	unsigned int _sdlscale;
+
 	static const adapter::video_mode video_modes[];
+	static bool SDLonce;
 
 protected:
-	void write_crtc(unsigned int port, unsigned char reg, unsigned char val);
-	bool x16mode(void);
+	bool sdlmode(Mode mode);
 
 public:
-	vga(void);
-	~vga(void);
+	sdl(void);
+	~sdl(void);
 	bool setup(void);
 	bool setpalette(palette::pal_type pal);
 	bool setpalette(palette::pal_t *pal, int palette_entries);
 	bool graphmode(Mode mode);
 	Mode getmode(void);
-	bool textmode(void);
+	bool textmode(void) { return false; }
 	void setpixel(int x, int y, unsigned char visible);
 	unsigned char getpixel(int x, int y);
 	void cls(void);
-	ptr_t allocate_screen_buffer();
 	void update(void);
-	void vsync(void);
+	void vsync(void) {}
 	void translate(unsigned char far *src);
+	bool kbhit(void);
+	int getch(void);
+	int getEvents(int ms);
 
 };
+#endif
 
-#endif /* VGA_H_ */
+#endif /* SDL_H_ */

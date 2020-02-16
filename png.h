@@ -238,7 +238,10 @@ public:
 	string errormsg(void);
 	bool load(const char *file);
 	bool convert(image& img);
-	bool loadimage(const char *file, image& img) { return this->load(file) && this->convert(img); }
+	static bool loadimage(const char *file, image& img) {
+		png p;
+		return p.load(file) && p.convert(img);
+	}
 	void free(void);
 };
 

@@ -16,7 +16,7 @@ public:
 		unsigned char a;
 	} pala_t;
 
-	enum pal_type { CGA_PAL, VGA_PAL, RGB_PAL, NONE = 255 };
+	enum pal_type { CGA_PAL, VGA_PAL, RGB_PAL, CUSTOM, NONE = 255 };
 
 	static const pal_t vga_pal[];
 	static const pal_t cga_pal[];

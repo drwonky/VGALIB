@@ -11,12 +11,18 @@
 //enum bool {false,true};
 #define int32_t long
 #define uint32_t unsigned long
+#define CRTCa 0x3d8
+#define CRTCb 0x3d4
+#define CRTCma 0x3b8
+#define CRTCmb 0x3b4
+#define CRTCmd 0x3ba
 #else
 #define far 
 #endif
 
 #ifdef __GNUC__
 #include <stdint.h>
+#define USESDL
 #endif
 
 #define bswap32(x) \
