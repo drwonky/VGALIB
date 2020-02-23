@@ -1,0 +1,24 @@
+*.o
+*.obj
+*.OBJ
+*.MAP
+*.EXE
+*.BAK
+*.bak
+*.TR
+*.ARC
+*.TFA
+*.out
+*.BMP
+*.jpg
+*.CSM
+*.TD
+
+emdemo
+emx16demo
+vgademo
+png
+
+#just ref material
+rgbhsv.cpp
+rgbmix.cpp
