@@ -1,4 +1,5 @@
 BCC = bcc
+TLINK = tlink
 BCFLAGS = -a- -3 -Fs- -mh -O2 -v
 # -Ie:\bc45\include -Le:\bc45\lib
 
@@ -69,11 +70,16 @@ emscripten/emx16demo.html: emx16demo.cpp $(SRC)
 png.exe: png.cpp memory.obj image.cpp zlib.h zconf.h zlib_h.lib
 	bcc -DDEBUG -DTEST -3 -Fs- -mh -v png.cpp memory.obj image.cpp zlib_h.lib
 
-vga.exe: vga.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj
-	$(BCC) $(BCFLAGS) vga.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj
+#vgademo.exe: adapter.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj vgademo.obj vga.obj 
+#	$(BCC) $(BCFLAGS) vgademo.obj adapter.obj vga.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj
+VGAOBJS = vgademo.obj adapter.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj vgademo.obj vga.obj 
+
+vgademo.exe: $(VGAOBJS)
+#	$(BCC) -e vgademo.exe $(VGAOBJS) zlib_h.lib
+	$(BCC) $(BCFLAGS) -evgademo.exe *.obj zlib_h.lib
 	
 dclean:
-	del *.obj vga.exe
+	del *.obj vgademo.exe
 
 clean:
 	rm -f $(OBJS) $(BIN)

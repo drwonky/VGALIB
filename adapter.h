@@ -19,7 +19,7 @@ public:
 	{
 		NONE,
 		MDA,
-		HERC,
+		HERCULES,
 		CGA,
 		EGA,
 		VGA,
@@ -28,9 +28,12 @@ public:
 
 	enum Mode
 	{
-		TEXT = 0x03,
-		CGALO = 0x04,
-		CGAHI = 0x05,
+		TEXT = 0x00,
+		CGALO = 0x01,
+		CGAHI = 0x02,
+		HERC = 0x03,
+		ATT400 = 0x04,
+		COMPAQ = 0x04,
 		PCJRLO = 0x08,
 		PCJRMED = 0x09,
 		PCJRHI = 0x0A,

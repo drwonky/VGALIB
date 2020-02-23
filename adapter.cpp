@@ -1,9 +1,12 @@
 
+#define DEBUG
+
 #include "types.h"
 #include "string.h"
 #include "adapter.h"
 #include "vga.h"
 #include "sdl.h"
+#include <stdio.h>
 
 #ifdef __GNUC__
 #include <iostream>
@@ -85,12 +88,13 @@ adapter::Adapters adapter::detect(void)
 
 	if (_AL == 0x07) {		/* Check that this is BW 80x25 */
 
+		debug(printf("Detected mono text mode\n"));
 		/* Check if there is 32KB of memory from B000-B7FF, if there is, it's Hercules Monochrome */
-		unsigned char far *check_ptr = MK_FP(0xB7FF,0);
+		unsigned char far *check_ptr = (unsigned char far *) MK_FP(0xB7FF,0);
 		*check_ptr = 0xA5;
 		if (*check_ptr == 0xA5) {
 			*check_ptr = 0;
-			return HERC;
+			return HERCULES;
 		}
 
 		return MDA;
@@ -111,6 +115,7 @@ adapter::Adapters adapter::detect(void)
 	status = _AL;
 
 	if (status == 0x1a && (active == 0x07 || active == 0x08)) {  /* VGA color or mono*/
+		debug(printf("Detected VGA\n"));
 
 		return VGA;	/* VGA */
 
@@ -122,6 +127,7 @@ adapter::Adapters adapter::detect(void)
 				switches == 0xB 	/* EGA w/MONO */
 				) {
 
+		debug(printf("Detected EGA\n"));
 		return EGA;	/* EGA */
 
 	} else { /* CGA does not have an attribute controller register, only mode controller */
@@ -132,6 +138,7 @@ adapter::Adapters adapter::detect(void)
 
 		if (_AL != 0x07) {		/* Check that this is not BW 80x25 */
 
+			debug(printf("Detected CGA\n"));
 			return CGA;	/* CGA */
 
 		}
@@ -143,6 +150,7 @@ adapter::Adapters adapter::detect(void)
 #endif
 #endif
 
+	debug(printf("Could not detect a card, falling through\n"));
 	return NONE;
 }
 
@@ -151,12 +159,13 @@ adapter *adapter::init(Adapters card)
 	switch(card) {
 	case VGA:
 		return new vga();
-		break;
+#ifdef __GNUC__
 	case SDL:
 		return new sdl();
-		break;
+#endif
 	default:
 		return NULL;
-		break;
 	}
 }
+
+#undef DEBUG

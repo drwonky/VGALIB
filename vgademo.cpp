@@ -164,7 +164,7 @@ int main(void)
 
 //	display->getch();
 
-//	display->textmode();
+	display->textmode();
 
 //	display->debuginfo();
 

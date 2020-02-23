@@ -16,6 +16,8 @@
 #define CRTCma 0x3b8
 #define CRTCmb 0x3b4
 #define CRTCmd 0x3ba
+#include <dos.h>
+#include <conio.h>
 #else
 #define far 
 #endif

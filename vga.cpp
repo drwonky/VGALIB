@@ -92,7 +92,7 @@ bool vga::graphmode(Mode mode)
 bool vga::textmode(void)
 {
 #ifdef __BORLANDC__
-	_AL=(unsigned char) vmode;
+	_AL=0x03;
 	_AH=0;
 	geninterrupt(0x10);
 	return setup();
@@ -291,6 +291,7 @@ void vga::vsync(void)
 bool vga::setpalette(palette::pal_type pal)
 {
 	// TODO
+	_cur_palette = pal;
 	return true;
 }
 

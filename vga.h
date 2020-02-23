@@ -10,8 +10,6 @@
 
 #ifdef __BORLANDC__
 #define KBHIT kbhit
-#include <dos.h>
-#include <conio.h>
 #endif
 
 #include "image.h"
@@ -33,7 +31,7 @@ public:
 	bool setpalette(palette::pal_type pal);
 	bool setpalette(palette::pal_t *pal, int palette_entries);
 	bool graphmode(Mode mode);
-	Mode getmode(void);
+	adapter::Mode getmode(void);
 	bool textmode(void);
 	void setpixel(int x, int y, unsigned char visible);
 	unsigned char getpixel(int x, int y);
