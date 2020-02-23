@@ -152,16 +152,18 @@ bool canvas::allocate(void)
 
 void canvas::fill(pixel_t color)
 {
-//	for(ptr_t p=_buffer;p<_buffer+_width*_height;p++) *p=color;
+#ifdef __GNUC__
 	ptr_t end=_buffer+_width*_height;
 	if (((_width*_height) & 3) == 0) { // dword optimization
 		uint32_t c=(color<<24)|(color<<16)|(color<<8)|(color);
 		uint32_t *dwend = (uint32_t *)end;
-//		printf("dword color %02x fill %08x _buffer %p e %p e-_buffer %d wxh %d\n",color,c,(uint32_t *)_buffer,(uint32_t *)e,(uint64_t)e-(uint64_t)_buffer,_width*_height);
 		for(uint32_t *p=(uint32_t *)_buffer;p<dwend;p++) *p=c;
 	} else {
 		for(ptr_t p=_buffer;p<end;p++) *p=color;
 	}
+#else
+	for(ptr_t p=_buffer;p<_buffer+_width*_height;p++) *p=color;
+#endif
 }
 
 // weighted squares color distance calculation
