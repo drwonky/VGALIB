@@ -16,6 +16,7 @@ using namespace std;
 
 /* mode, width, height, bytes_per_line, base_addr, bpp, Bpp, colors, vsync_reg, scale */
 const adapter::video_mode vga::video_modes[] = {
+ {TEXT,80,25,80,0xb800,1,8,0xF,0x3da,0},
  {VGAMONO,640,480,80,0xa000,1,1,0x1,0x3da,0},
  {VGAHI,640,480,80,0xa000,4,1,0xF,0x3da,0},
  {VGALO,320,200,320,0xa000,1,8,0xFF,0x3da,2},
@@ -24,11 +25,12 @@ const adapter::video_mode vga::video_modes[] = {
 
 vga::vga(void)
 {
-	getmode();
+	_savedvmode = getmode();
 }
 
 vga::~vga(void)
 {
+	setmode(_savedvmode);
 }
 
 ptr_t vga::allocate_screen_buffer()
@@ -44,16 +46,16 @@ ptr_t vga::allocate_screen_buffer()
 bool vga::setup(void)
 {
 	for (unsigned long int i=0;i<sizeof(video_modes);i++) {
-		if (video_modes[i].mode == vmode) {
+		if (video_modes[i].mode == _vmode) {
 			_row_bytes = video_modes[i].bytes;
 			_width = video_modes[i].x;
 			_height = video_modes[i].y;
 			bpp = video_modes[i].bpp;
-			Bpp = bpp/8;
+			Bpp = 8/bpp;
 			planes = video_modes[i].planes;
 			colors = video_modes[i].colors;
 			SR = video_modes[i].sr;
-			buf_size = _width*_height;
+			buf_size = _width*_height/Bpp;
 
 #ifdef __BORLANDC__
 			_buffer = (unsigned char far *) MK_FP(video_modes[i].fp,0);
@@ -63,6 +65,15 @@ bool vga::setup(void)
 		}
 	}
 	return false;
+}
+
+void vga::setmode(Mode mode)
+{
+#ifdef __BORLANDC__
+	_AL=(unsigned char) mode;
+	_AH=0;
+	geninterrupt(0x10);
+#endif
 }
 
 bool vga::graphmode(Mode mode)
@@ -78,15 +89,10 @@ bool vga::graphmode(Mode mode)
 			break;
 	}
 
-	vmode=mode;
-#ifdef __BORLANDC__
-	_AL=(unsigned char) mode;
-	_AH=0;
-	geninterrupt(0x10);
+	_vmode=mode;
+
+	setmode(_vmode);
 	return setup();
-#else
-	return true;
-#endif
 }
 
 bool vga::textmode(void)
@@ -125,7 +131,7 @@ bool vga::x16mode(void)
 
 	}
 
-	vmode=X16;
+	_vmode=X16;
 
 	return setup();
 #else
@@ -146,63 +152,17 @@ adapter::Mode vga::getmode(void)
 #ifdef __BORLANDC__
 	_AX=0x0f00;
 	geninterrupt(0x10);
-	vmode=(Mode)_AL;
-	return (vmode);
+	_vmode=(Mode)_AL;
+	return (_vmode);
 #else
-	return vmode;
+	return _vmode;
 #endif
-}
-
-void vga::setpixel(int x, int y, unsigned char visible)
-{
-	static unsigned int plane_offset=0;
-	static unsigned char temp;
-	static unsigned char bit;
-
-	visible&=colors;
-
-	switch (vmode) {
-		case VGAMONO:
-			plane_offset=(y*_row_bytes)+(x>>3);
-			bit=(7-(x&7));
-			temp=screen._buffer[plane_offset];
-			temp=temp&(255^(1<<bit));
-			temp=temp|(visible<<bit);
-			screen._buffer[plane_offset]=temp;
-			break;
-		case VGAHI:
-
-			break;
-		default:
-			plane_offset=(y*_row_bytes)+(x);
-			screen._buffer[plane_offset]=visible;
-			break;
-	}
-}
-
-unsigned char vga::getpixel(int x, int y)
-{
-	static unsigned int plane_offset=0;
-
-	switch (vmode) {
-		case VGAMONO:
-			plane_offset=(y*_row_bytes)+(x>>3);
-			return((screen._buffer[plane_offset]&(7-(x&7)))>>(7-(x&7)));
-		case VGAHI:
-			break;
-		case TEXT:
-			plane_offset=(y*_row_bytes)+(x<<1);
-			return(screen._buffer[plane_offset]);
-		default:
-			plane_offset=(y*_row_bytes)+(x);
-			return(screen._buffer[plane_offset]);
-	}
-	return 0;
 }
 
 void vga::cls(void)
 {
 	screen.clear();
+	update();
 }
 
 void vga::update(void)
@@ -214,7 +174,7 @@ void vga::update(void)
 void vga::translate(unsigned char far *src)
 {
 #ifdef __BORLANDC__
-	switch (vmode) {
+	switch (_vmode) {
 		case MDA:
 		case TEXT:
 			_CX=buf_size>>1;

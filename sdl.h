@@ -41,8 +41,6 @@ public:
 	bool graphmode(Mode mode);
 	Mode getmode(void);
 	bool textmode(void) { return false; }
-	void setpixel(int x, int y, unsigned char visible);
-	unsigned char getpixel(int x, int y);
 	void cls(void);
 	void update(void);
 	void vsync(void) {}

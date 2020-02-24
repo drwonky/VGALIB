@@ -53,7 +53,7 @@ sdl::~sdl(void)
 bool sdl::setup(void)
 {
 	for (unsigned long int i=0;i<sizeof(video_modes);i++) {
-		if (video_modes[i].mode == vmode) {
+		if (video_modes[i].mode == _vmode) {
 			_row_bytes = video_modes[i].bytes;
 			_width = video_modes[i].x;
 			_height = video_modes[i].y;
@@ -121,7 +121,7 @@ bool sdl::setpalette(palette::pal_t *pal, int palette_entries)
 
 bool sdl::sdlmode(Mode mode)
 {
-	vmode=mode;
+	_vmode=mode;
 	setup();
 
 	_window = SDL_CreateWindow("VGALIB",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,_width*_sdlscale,_height*_sdlscale,SDL_WINDOW_SHOWN|SDL_WINDOW_RESIZABLE);
@@ -149,7 +149,7 @@ bool sdl::graphmode(Mode mode)
 			setpalette(palette::VGA_PAL);
 			return sdlmode(mode);
 		case X16:
-			setpalette(palette::CGA_PAL);
+			setpalette(palette::TEXT_PAL);
 			return sdlmode(mode);
 		default:
 			return false;
@@ -158,30 +158,13 @@ bool sdl::graphmode(Mode mode)
 
 adapter::Mode sdl::getmode(void)
 {
-	return vmode;
-}
-
-void sdl::setpixel(int x, int y, unsigned char visible)
-{
-	static unsigned int plane_offset=0;
-
-	visible&=colors;
-
-	plane_offset=(y*_row_bytes)+(x);
-	screen._buffer[plane_offset]=visible;
-}
-
-unsigned char sdl::getpixel(int x, int y)
-{
-	static unsigned int plane_offset=0;
-
-	plane_offset=(y*_row_bytes)+(x);
-	return(screen._buffer[plane_offset]);
+	return _vmode;
 }
 
 void sdl::cls(void)
 {
 	screen.clear();
+	update();
 }
 
 void sdl::update(void)

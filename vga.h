@@ -19,6 +19,7 @@ class vga : public adapter
 {
 protected:
 	static const adapter::video_mode video_modes[];
+	Mode _savedvmode;
 
 protected:
 	void write_crtc(unsigned int port, unsigned char reg, unsigned char val);
@@ -33,8 +34,7 @@ public:
 	bool graphmode(Mode mode);
 	adapter::Mode getmode(void);
 	bool textmode(void);
-	void setpixel(int x, int y, unsigned char visible);
-	unsigned char getpixel(int x, int y);
+	void setmode(Mode mode);
 	void cls(void);
 	ptr_t allocate_screen_buffer();
 	void update(void);
