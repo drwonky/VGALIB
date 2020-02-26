@@ -160,13 +160,12 @@ int main(void)
 			rotx*=-1;
 			rotx=((rotx>0)-(rotx<0))*(rand()%5+1);
 		}
-	} while(!KBHIT() && c!=27);
+	} while(!display->kbhit() && c!=27);
 
 //	display->getch();
 
-	display->textmode();
-
 //	display->debuginfo();
+	delete display;
 
 	printf ("clear\n");
 
