@@ -17,7 +17,8 @@ using namespace std;
 /* mode, width, height, bytes_per_line, base_addr, bpp, Bpp, colors, vsync_reg, scale */
 const adapter::video_mode cga::video_modes[] = {
  {TEXT,80,25,80,0xb800,8,8,0xF,0x3da,0},
- {CGALO,320,200,80,0xb800,2,8,0xF,0x3da,0},
+ {CGALO1,320,200,80,0xb800,2,8,0xF,0x3da,0},
+ {CGALO2,320,200,80,0xb800,2,8,0xF,0x3da,0},
  {CGAHI,640,200,80,0xb800,1,8,0xF,0x3da,0},
  {X16,160,100,160,0xb800,1,8,0xF,0x3da,4}
 };
@@ -32,16 +33,6 @@ cga::~cga(void)
 	setmode(_savedvmode);
 }
 
-ptr_t cga::allocate_screen_buffer()
-{
-	ptr_t buf = new unsigned far char [buf_size];
-	if (buf == NULL) {
-		printf ("Null ptr allocating buffer!\n");
-		exit(1);
-	}
-	return buf;
-}
-
 bool cga::setup(void)
 {
 	for (unsigned long int i=0;i<sizeof(video_modes);i++) {
@@ -54,7 +45,7 @@ bool cga::setup(void)
 			planes = video_modes[i].planes;
 			colors = video_modes[i].colors;
 			SR = video_modes[i].sr;
-			buf_size = _width*_height/Bpp;
+			buf_size = _row_bytes*_height;
 
 #ifdef __BORLANDC__
 			_buffer = (unsigned char far *) MK_FP(video_modes[i].fp,0);
@@ -83,8 +74,11 @@ bool cga::graphmode(Mode mode)
 		case X16:
 			setpalette(palette::TEXT_PAL);
 			return x16mode();
-		case CGALO:
-			setpalette(palette::CGA1_PAL);
+		case CGALO1:
+			setpalette(palette::CGA1HI_PAL);
+			break;
+		case CGALO2:
+			setpalette(palette::CGA2HI_PAL);
 			break;
 	}
 
@@ -97,7 +91,7 @@ bool cga::graphmode(Mode mode)
 bool cga::textmode(void)
 {
 #ifdef __BORLANDC__
-	setmode(3);
+	setmode(TEXT);
 	return setup();
 #else
 	return true;
@@ -183,7 +177,6 @@ void cga::translate(unsigned char far *src)
 {
 #ifdef __BORLANDC__
 	switch (_vmode) {
-		case MDA:
 		case TEXT:
 			_CX=buf_size>>1;
 			_DI=FP_OFF(_buffer);
@@ -193,7 +186,7 @@ void cga::translate(unsigned char far *src)
 			_AX=FP_SEG(_buffer);
 			_ES=_AX;
 
-		xlate:
+		xlatetext:
 			asm {
 				lodsw				// 5
 				mov	bx, ax
@@ -203,7 +196,7 @@ void cga::translate(unsigned char far *src)
 				mov	ax, bx
 				mov al,0xDB
 				stosw
-				loop	xlate       // 15
+				loop	xlatetext       // 15
 			}                       // 44
 
 			break;
@@ -216,7 +209,7 @@ void cga::translate(unsigned char far *src)
 			_AX=FP_SEG(_buffer);
 			_ES=_AX;
 
-		xlate1:
+		xlate16:
 			asm {
 				lodsd				// 5
 				and		eax, 0x0F0F0F0F // 2
@@ -229,13 +222,71 @@ void cga::translate(unsigned char far *src)
 				mov		al, 0xde    // 2
 				rol		eax, 16     // 3
 				stosd               // 4
-				loop	xlate1       // 15
+				loop	xlate16       // 15
 			}                       // 44
 
 			break;
 
-		case VGALO:
-			memory::blit(_buffer,src,buf_size);
+		case CGALO1:
+		case CGALO2:
+			_DX=_height>>1;
+			_SI=FP_OFF(src);
+			_DI=FP_OFF(_buffer);
+			_CX=FP_SEG(src);
+			_AX=FP_SEG(_buffer);
+			_BX=_row_bytes;
+			_DS=_CX;
+			_ES=_AX;
+
+		xlatelo:
+			asm {
+				mov cx,bx
+			}
+		xeven:
+			asm {
+				lodsd				// 5
+										//                       HHHH HHHH LLLL LLLL
+				and		eax, 0x03030303	// 2 0000 00xx 0000 00xx 0000 00xx 0000 00xx
+				shl		al, 2       	// 3 0000 00xx 0000 00xx 0000 xx00 0000 00xx
+				or		al, ah      	// 2 0000 00xx 0000 00xx 0000 xx00 0000 xxxx
+				ror		eax, 16     	// 3 0000 xx00 0000 xxxx 0000 00xx 0000 00xx
+				shl		al, 2       	// 3 0000 xx00 0000 xxxx 0000 xx00 0000 00xx
+				or		al, ah      	// 2 0000 xx00 0000 xxxx 0000 xx00 0000 xxxx
+				shl		ax, 12
+				shr		eax,12
+				stosb               	// 4
+
+				loop	xeven       	//
+
+				push	di
+				add		di, 0x1FB0
+				mov		cx,bx
+			}                       // 44
+		xodd:
+			asm {
+
+				lodsd				// 5
+										//                       HHHH HHHH LLLL LLLL
+				and		eax, 0x03030303	// 2 0000 00xx 0000 00xx 0000 00xx 0000 00xx
+				shl		al, 2       	// 3 0000 00xx 0000 00xx 0000 xx00 0000 00xx
+				or		al, ah      	// 2 0000 00xx 0000 00xx 0000 xx00 0000 xxxx
+				ror		eax, 16     	// 3 0000 xx00 0000 xxxx 0000 00xx 0000 00xx
+				shl		al, 2       	// 3 0000 xx00 0000 xxxx 0000 xx00 0000 00xx
+				or		al, ah      	// 2 0000 xx00 0000 xxxx 0000 xx00 0000 xxxx
+				shl		ax, 12
+				shr		eax,12
+				stosb               	// 4
+
+				loop	xodd       	//
+
+				pop		di
+
+				dec		dx
+				jnz		xlatelo
+			}                       // 44
+
+			break;
+		case CGAHI:
 			break;
 	}
 #endif
