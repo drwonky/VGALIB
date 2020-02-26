@@ -616,8 +616,8 @@ void canvas::drawimage(int x, int y, canvas& img, bool transparent)
 	dest=_buffer+(y*_width+x);
 	rem=img._buffer;
 
-	if (x==0 && w==_width) {  // src is same width as dest, can just do partial or full block copy
-		memory::blit(dest,rem,img._size);
+	if (x==0 && w==_width && !transparent) {  // src is same width as dest, can just do partial or full block copy
+		memory::blit(dest,rem, h < (_height - y) ? img._size : (_height - y) * _width);
 		return;
 	}
 
@@ -644,7 +644,7 @@ void canvas::drawimage(int x, int y, canvas& img, bool transparent)
 }
 
 /*
- * Source image wider or taller than destination, allows for panning
+ * Source image wider or taller than destination, allows for panning or sprite sheets
  */
 void canvas::drawimage(int x, int y, int sx, int sy, int width, int height, canvas& img, bool transparent)
 {
