@@ -148,6 +148,9 @@ post_end:
 
 }
 
+/*
+ * Implements a fast dword aligned copy, assumes large buffer copy, fastest way to copy memory on 386
+ */
 void memory::blit(ptr_t dest, ptr_t src, size_t size)
 {
 #ifdef __BORLANDC__
