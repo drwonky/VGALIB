@@ -40,8 +40,14 @@ memory.obj: memory.cpp
 png.obj: png.cpp image.obj canvas.obj memory.obj zlib.h zconf.h
 #	$(BCC) $(BCFLAGS) -DDEBUG -c $**
 
+cga.obj: cga.cpp
+	$(BCC) $(BCFLAGS) -B -c $**
+	
+ega.obj: ega.cpp
+	$(BCC) $(BCFLAGS) -B -c $**
+	
 vga.obj: vga.cpp
-	$(BCC) $(BCFLAGS) -B -c vga.cpp
+	$(BCC) $(BCFLAGS) -B -c $**
 	
 pngtest.o: png.cpp
 	$(CXX) $(CFLAGS) -DTEST -DDEBUG -c -o $@ $^
@@ -72,14 +78,20 @@ png.exe: png.cpp memory.obj image.cpp zlib.h zconf.h zlib_h.lib
 
 #vgademo.exe: adapter.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj vgademo.obj vga.obj 
 #	$(BCC) $(BCFLAGS) vgademo.obj adapter.obj vga.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj
-VGAOBJS = vgademo.obj adapter.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj vgademo.obj vga.obj 
-
+LIBS=zlib_h.lib
+DEMOOBJS = adapter.obj memory.obj canvas.obj image.obj png.obj vtext.obj palettes.obj vga.obj ega.obj cga.obj 
+DEMOS = vgademo.exe cgademo.exe
+VGAOBJS = vgademo.obj $(DEMOOBJS)
 vgademo.exe: $(VGAOBJS)
 #	$(BCC) -e vgademo.exe $(VGAOBJS) zlib_h.lib
-	$(BCC) $(BCFLAGS) -evgademo.exe *.obj zlib_h.lib
+	$(BCC) $(BCFLAGS) -e$< $** $(LIBS)
+	
+CGAOBJS = cgademo.obj $(DEMOOBJS)
+cgademo.exe: $(CGAOBJS)
+	$(BCC) $(BCFLAGS) -e$< $** $(LIBS)
 	
 dclean:
-	del *.obj vgademo.exe
+	del $(DEMOOBJS) $(CGAOBJS) $(VGAOBJS) $(DEMOS)
 
 clean:
 	rm -f $(OBJS) $(BIN)
