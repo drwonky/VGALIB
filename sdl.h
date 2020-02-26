@@ -10,7 +10,6 @@
 
 #ifdef __GNUC__
 #include <SDL2/SDL.h>
-#define KBHIT display->kbhit
 
 #include "image.h"
 #include "adapter.h"

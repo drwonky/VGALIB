@@ -4,6 +4,8 @@
 #include "types.h"
 #include "string.h"
 #include "adapter.h"
+#include "cga.h"
+#include "ega.h"
 #include "vga.h"
 #include "sdl.h"
 #include <stdio.h>
@@ -30,7 +32,7 @@ adapter::adapter(void)
 	_buffer=NULL;
 	buf_size=0;
 	_display=NULL;
-	vmode=UNDEF;
+	_vmode=UNDEF;
 }
 
 adapter::~adapter()
@@ -51,16 +53,10 @@ bool adapter::setpalette(palette::pal_type pal)
 	return true;
 }
 
-ptr_t adapter::allocate_screen_buffer()
-{
-	ptr_t buf = new unsigned far char [buf_size];
-	return buf;
-}
-
-bool adapter::kbhit(void) // @suppress("No return")
+int adapter::kbhit(void) // @suppress("No return")
 {
 #ifdef __BORLANDC__
-	return kbhit();
+	return ::kbhit();
 #else
 	return false;
 #endif
@@ -157,11 +153,16 @@ adapter::Adapters adapter::detect(void)
 adapter *adapter::init(Adapters card)
 {
 	switch(card) {
-	case VGA:
-		return new vga();
 #ifdef __GNUC__
 	case SDL:
 		return new sdl();
+#else
+	case CGA:
+		return new cga();
+	case EGA:
+		return new ega();
+	case VGA:
+		return new vga();
 #endif
 	default:
 		return NULL;

@@ -33,16 +33,6 @@ vga::~vga(void)
 	setmode(_savedvmode);
 }
 
-ptr_t vga::allocate_screen_buffer()
-{
-	ptr_t buf = new unsigned far char [buf_size];
-	if (buf == NULL) {
-		printf ("Null ptr allocating buffer!\n");
-		exit(1);
-	}
-	return buf;
-}
-
 bool vga::setup(void)
 {
 	for (unsigned long int i=0;i<sizeof(video_modes);i++) {
@@ -55,7 +45,7 @@ bool vga::setup(void)
 			planes = video_modes[i].planes;
 			colors = video_modes[i].colors;
 			SR = video_modes[i].sr;
-			buf_size = _width*_height/Bpp;
+			buf_size = _row_bytes*_height;
 
 #ifdef __BORLANDC__
 			_buffer = (unsigned char far *) MK_FP(video_modes[i].fp,0);
@@ -82,7 +72,7 @@ bool vga::graphmode(Mode mode)
 		case TEXT:
 			return textmode();
 		case X16:
-			setpalette(palette::CGA_PAL);
+			setpalette(palette::TEXT_PAL);
 			return x16mode();
 		case VGALO:
 			setpalette(palette::VGA_PAL);
@@ -175,7 +165,6 @@ void vga::translate(unsigned char far *src)
 {
 #ifdef __BORLANDC__
 	switch (_vmode) {
-		case MDA:
 		case TEXT:
 			_CX=buf_size>>1;
 			_DI=FP_OFF(_buffer);

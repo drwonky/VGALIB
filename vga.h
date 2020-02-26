@@ -36,7 +36,6 @@ public:
 	bool textmode(void);
 	void setmode(Mode mode);
 	void cls(void);
-	ptr_t allocate_screen_buffer();
 	void update(void);
 	void vsync(void);
 	void translate(unsigned char far *src);

@@ -62,7 +62,7 @@ bool sdl::setup(void)
 			planes = video_modes[i].planes;
 			colors = video_modes[i].colors;
 			SR = video_modes[i].sr;
-			buf_size = _width*_height;
+			buf_size = _row_bytes*_height;
 			_sdlscale = video_modes[i].scale;
 			_render = SDL_CreateRGBSurface(0,_width,_height,8,0,0,0,0);
 			screen = canvas(_width,_height,(ptr_t)_render->pixels);

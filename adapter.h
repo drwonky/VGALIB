@@ -28,12 +28,15 @@ public:
 
 	enum Mode
 	{
-		HERC = 0x00,
-		CGALO = 0x01,
-		CGAHI = 0x02,
+		UNDEF = 0x0,
+		CGALO1 = 0x04,
+		CGALO2 = 0x05,
+		CGAHI = 0x06,
 		TEXT = 0x03,
-		ATT400 = 0x04,
-		COMPAQ = 0x04,
+		ATT400 = 0x02,
+		COMPAQ = 0x02,
+		HERC = 0x01,
+		BWTEXT = 0x07,
 		PCJRLO = 0x08,
 		PCJRMED = 0x09,
 		PCJRHI = 0x0A,
@@ -44,8 +47,7 @@ public:
 		VGAMONO = 0x11,
 		VGAHI = 0x12,
 		VGALO = 0x13,
-		X16 = 0x16,
-		UNDEF = 0xFF
+		X16 = 0x16
 	};
 
 	typedef struct
@@ -94,7 +96,6 @@ public:
 	virtual Mode getmode(void) = 0;
 	virtual bool textmode(void) = 0;
 	virtual bool setup(void) = 0;
-	virtual ptr_t allocate_screen_buffer();
 	virtual bool setpalette(palette::pal_type pal);
 	virtual bool setpalette(palette::pal_t *pal, int palette_entries) = 0;
 	virtual palette::pal_type getpalette(void)
@@ -113,7 +114,7 @@ public:
 	{
 		return _height;
 	}
-	virtual bool kbhit(void);
+	virtual int kbhit(void);
 	virtual int getch(void);
 	virtual bool graphmode(Mode mode) = 0;
 	virtual void cls(void) = 0;
