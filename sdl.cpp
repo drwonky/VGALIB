@@ -190,7 +190,7 @@ void sdl::translate(unsigned char far *src)
 	SDL_RenderPresent(_renderer);
 }
 
-bool sdl::kbhit(void)
+int sdl::kbhit(void)
 {
 	if (SDL_PollEvent(&_event)) {
 		switch (_event.type) {

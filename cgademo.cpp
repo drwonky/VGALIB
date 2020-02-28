@@ -37,10 +37,10 @@ int main(void)
 
 	printf("About to go graphics...\n");
 	display->graphmode(adapter::CGALO1);
-//	display->setpalette(palette::CGA0_PAL);
-//	canvas::setdefpalette(display->getpalette());
-	canvas::setdefpalette(palette::CGA1HI_PAL);
-	outportb(0x3d9,0);
+//	display->overscan(0x09);
+	display->setpalette(palette::CGA1_PAL);
+	canvas::setdefpalette(display->getpalette());
+//	canvas::setdefpalette(palette::CGA1_PAL);
 
 	image mario;
 	image bg;
@@ -73,18 +73,24 @@ int main(void)
 //	display->graphmode(SDLVGALO);
 
 //	display->initsprites();
+	display->getch();
 	display->cls();
 
 	printf("Cleared\n");
 	vtext text(screen.width(),screen.height(),0);
-	mytext.setbg(14);
-	text.drawtext(mytext,"Mario",4);
+	mytext.setbg(0);
+	text.drawtext(mytext,"Mario",1);
 
 	png::loadimage("mariobg.png", bg);
-	screen.drawimage(0,0,bg);
+//	screen.drawimage(0,0,bg);
+//	screen.drawimage(320,0,bg);
+	screen.line(0,0,screen.width()-1,screen.height()-1,1);
+//	screen.line(0,screen.height()-1,screen.width()-1,0,1);
+	screen.drawsprite(display->width()-mytext.width(),2,mytext);
 
 	printf("Sync...\n");
 	display->update();
+	display->getch();
 
 	x=y=0;
 //	display->syncsprites();
@@ -119,6 +125,7 @@ int main(void)
 	do {
 //		display->syncsprites();
 		screen.drawimage(0,0,bg);
+		screen.drawimage(320,0,bg);
 		screen.drawsprite(display->width()-mytext.width(),2,mytext);
 		box.rotate(boxc,rot);
 //		if (rotframes==2) rotframes=0,box.rotate(boxc,rot);

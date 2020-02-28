@@ -165,7 +165,7 @@ void ega::update(void)
 	translate(screen._buffer);
 }
 
-void ega::translate(unsigned char far *src)
+void ega::translate(ptr_t src)
 {
 #ifdef __BORLANDC__
 	switch (_vmode) {

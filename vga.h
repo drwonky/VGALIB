@@ -8,10 +8,6 @@
 #ifndef VGA_H_
 #define VGA_H_
 
-#ifdef __BORLANDC__
-#define KBHIT kbhit
-#endif
-
 #include "image.h"
 #include "adapter.h"
 
@@ -38,7 +34,7 @@ public:
 	void cls(void);
 	void update(void);
 	void vsync(void);
-	void translate(unsigned char far *src);
+	void translate(ptr_t src);
 
 };
 

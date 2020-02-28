@@ -43,8 +43,8 @@ public:
 	void cls(void);
 	void update(void);
 	void vsync(void) {}
-	void translate(unsigned char far *src);
-	bool kbhit(void);
+	void translate(ptr_t src);
+	int kbhit(void);
 	int getch(void);
 	int getEvents(int ms);
 

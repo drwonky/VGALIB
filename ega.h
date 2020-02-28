@@ -38,7 +38,7 @@ public:
 	void cls(void);
 	void update(void);
 	void vsync(void);
-	void translate(unsigned char far *src);
+	void translate(ptr_t src);
 
 };
 

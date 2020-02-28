@@ -117,9 +117,10 @@ public:
 	virtual int kbhit(void);
 	virtual int getch(void);
 	virtual bool graphmode(Mode mode) = 0;
+	virtual void overscan(unsigned char color) {;}
 	virtual void cls(void) = 0;
 	virtual void update(void) = 0;
-	virtual void translate(unsigned char far *src) = 0;
+	virtual void translate(ptr_t src) = 0;
 	virtual void vsync(void) = 0;
 
 };

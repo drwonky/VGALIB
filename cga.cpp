@@ -26,6 +26,7 @@ const adapter::video_mode cga::video_modes[] = {
 cga::cga(void)
 {
 	_savedvmode = getmode();
+	pal_reg.reg=0;
 }
 
 cga::~cga(void)
@@ -79,6 +80,9 @@ bool cga::graphmode(Mode mode)
 			break;
 		case CGALO2:
 			setpalette(palette::CGA2HI_PAL);
+			break;
+		case CGAHI:
+			setpalette(palette::BW_PAL);
 			break;
 	}
 
@@ -173,7 +177,7 @@ void cga::update(void)
 	translate(screen._buffer);
 }
 
-void cga::translate(unsigned char far *src)
+void cga::translate(ptr_t src)
 {
 #ifdef __BORLANDC__
 	switch (_vmode) {
@@ -242,42 +246,42 @@ void cga::translate(unsigned char far *src)
 			asm {
 				mov cx,bx
 			}
-		xeven:
+		xevenlo:
 			asm {
 				lodsd				// 5
 										//                       HHHH HHHH LLLL LLLL
 				and		eax, 0x03030303	// 2 0000 00xx 0000 00xx 0000 00xx 0000 00xx
-				shl		al, 2       	// 3 0000 00xx 0000 00xx 0000 xx00 0000 00xx
-				or		al, ah      	// 2 0000 00xx 0000 00xx 0000 xx00 0000 xxxx
-				ror		eax, 16     	// 3 0000 xx00 0000 xxxx 0000 00xx 0000 00xx
-				shl		al, 2       	// 3 0000 xx00 0000 xxxx 0000 xx00 0000 00xx
-				or		al, ah      	// 2 0000 xx00 0000 xxxx 0000 xx00 0000 xxxx
-				shl		ax, 12
-				shr		eax,12
+				shl		al, 2       	// 3 0000 00xx 0000 00xx 0000 00xx 0000 xx00
+				or		al, ah      	// 2 0000 00xx 0000 00xx 0000 00xx 0000 xxxx
+				ror		eax, 16     	// 3 0000 00xx 0000 xxxx 0000 00xx 0000 00xx
+				shl		al, 2       	// 3 0000 00xx 0000 xxxx 0000 00xx 0000 xx00
+				or		al, ah      	// 2 0000 00xx 0000 xxxx 0000 00xx 0000 xxxx
+				shl		ax, 12			//   0000 00xx 0000 xxxx xxxx 0000 0000 0000
+				shr		eax,12			//   0000 0000 0000 0000 00xx 0000 xxxx xxxx
 				stosb               	// 4
 
-				loop	xeven       	//
+				loop	xevenlo       	//
 
 				push	di
 				add		di, 0x1FB0
 				mov		cx,bx
 			}                       // 44
-		xodd:
+		xoddlo:
 			asm {
 
 				lodsd				// 5
 										//                       HHHH HHHH LLLL LLLL
 				and		eax, 0x03030303	// 2 0000 00xx 0000 00xx 0000 00xx 0000 00xx
-				shl		al, 2       	// 3 0000 00xx 0000 00xx 0000 xx00 0000 00xx
-				or		al, ah      	// 2 0000 00xx 0000 00xx 0000 xx00 0000 xxxx
-				ror		eax, 16     	// 3 0000 xx00 0000 xxxx 0000 00xx 0000 00xx
-				shl		al, 2       	// 3 0000 xx00 0000 xxxx 0000 xx00 0000 00xx
-				or		al, ah      	// 2 0000 xx00 0000 xxxx 0000 xx00 0000 xxxx
-				shl		ax, 12
-				shr		eax,12
+				shl		al, 2       	// 3 0000 00xx 0000 00xx 0000 00xx 0000 xx00
+				or		al, ah      	// 2 0000 00xx 0000 00xx 0000 00xx 0000 xxxx
+				ror		eax, 16     	// 3 0000 00xx 0000 xxxx 0000 00xx 0000 00xx
+				shl		al, 2       	// 3 0000 00xx 0000 xxxx 0000 00xx 0000 xx00
+				or		al, ah      	// 2 0000 00xx 0000 xxxx 0000 00xx 0000 xxxx
+				shl		ax, 12			//   0000 00xx 0000 xxxx xxxx 0000 0000 0000
+				shr		eax,12			//   0000 0000 0000 0000 00xx 0000 xxxx xxxx
 				stosb               	// 4
 
-				loop	xodd       	//
+				loop	xoddlo       	//
 
 				pop		di
 
@@ -287,6 +291,87 @@ void cga::translate(unsigned char far *src)
 
 			break;
 		case CGAHI:
+			_DX=_height>>2;
+			_SI=FP_OFF(src);
+			_DI=FP_OFF(_buffer);
+			_CX=FP_SEG(src);
+			_AX=FP_SEG(_buffer);
+//			_BX=_row_bytes;
+			_DS=_CX;
+			_ES=_AX;
+
+		xlatehi:
+			asm {
+				mov cx,80
+			}
+		xevenhi:
+			asm {
+				lodsd				// 5
+										//                       HHHH HHHH LLLL LLLL
+				shr		eax, 1
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+
+				lodsd
+				shr		eax, 1
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+//				mov		ax,bx
+				mov		es:[di],bl
+				inc		di
+//				stosb               	// 4
+
+				loop	xevenhi       	//
+
+				push	di
+				add		di, 0x1FB0
+				mov		cx,80
+			}                       // 44
+		xoddhi:
+			asm {
+
+				lodsd				// 5
+										//                       HHHH HHHH LLLL LLLL
+				shr		eax, 1
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+
+				lodsd
+				shr		eax, 1
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+				shr		eax, 8
+				rcl		bx, 1
+//				mov		ax,bx
+				mov		es:[di],bl
+				inc		di
+										//                       HHHH HHHH LLLL LLLL
+				loop	xoddhi       	//
+
+				pop		di
+
+				dec		dx
+				jnz		xlatehi
+			}                       // 44
+
 			break;
 	}
 #endif
@@ -311,11 +396,52 @@ bool cga::setpalette(palette::pal_type pal)
 {
 	// TODO
 	_cur_palette = pal;
+
+	switch (pal) {
+	case palette::CGA0_PAL:
+		pal_reg.data.pal = 0;
+		pal_reg.data.fg_int = 0;
+		if (_vmode != adapter::CGALO2) setmode(adapter::CGALO1);
+		break;
+	case palette::CGA1_PAL:
+		pal_reg.data.pal = 1;
+		pal_reg.data.fg_int = 0;
+		if (_vmode != adapter::CGALO2) setmode(adapter::CGALO1);
+		break;
+	case palette::CGA0HI_PAL:
+		pal_reg.data.pal = 0;
+		pal_reg.data.fg_int = 1;
+		if (_vmode != adapter::CGALO2) setmode(adapter::CGALO1);
+		break;
+	case palette::CGA1HI_PAL:
+		pal_reg.data.pal = 1;
+		pal_reg.data.fg_int = 1;
+		if (_vmode != adapter::CGALO2) setmode(adapter::CGALO1);
+		break;
+	case palette::CGA2_PAL:
+		pal_reg.data.pal = 0;
+		pal_reg.data.fg_int = 0;
+		if (_vmode != adapter::CGALO2) setmode(adapter::CGALO2);
+		break;
+	case palette::CGA2HI_PAL:
+		pal_reg.data.pal = 0;
+		pal_reg.data.fg_int = 1;
+		if (_vmode != adapter::CGALO2) setmode(adapter::CGALO2);
+		break;
+	case palette::BW_PAL:
+		pal_reg.data.pal = 0;
+		pal_reg.data.fg_int = 0;
+		break;
+	}
+
+	printf("pal %02x %02x\n",pal,pal_reg.reg);
+//	outportb(PAL_REG,pal_reg.reg);
+
 	return true;
 }
 
 bool cga::setpalette(palette::pal_t *pal, int palette_entries)
 {
 	// TODO
-	return true;
+	return false;
 }

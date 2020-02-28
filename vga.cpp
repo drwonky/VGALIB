@@ -161,7 +161,7 @@ void vga::update(void)
 	translate(screen._buffer);
 }
 
-void vga::translate(unsigned char far *src)
+void vga::translate(ptr_t src)
 {
 #ifdef __BORLANDC__
 	switch (_vmode) {

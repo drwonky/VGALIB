@@ -8,10 +8,7 @@
 #ifndef CGA_H_
 #define CGA_H_
 
-#ifdef __BORLANDC__
-#define KBHIT kbhit
-#endif
-
+#define PAL_REG 0x3d9
 #include "image.h"
 #include "adapter.h"
 
@@ -20,6 +17,18 @@ class cga : public adapter
 protected:
 	static const adapter::video_mode video_modes[];
 	Mode _savedvmode;
+
+	typedef union {
+		unsigned char reg;
+		struct {
+			unsigned char border:4;
+			unsigned char fg_int:1;
+			unsigned char pal:1;
+			unsigned char xx:2;
+		} data;
+	} cga_pal_t;
+
+	cga_pal_t pal_reg;
 
 protected:
 	void write_crtc(unsigned int port, unsigned char reg, unsigned char val);
@@ -35,10 +44,11 @@ public:
 	adapter::Mode getmode(void);
 	bool textmode(void);
 	void setmode(Mode mode);
+	void overscan(unsigned char color) { pal_reg.data.border = color & 0x0F; }
 	void cls(void);
 	void update(void);
 	void vsync(void);
-	void translate(unsigned char far *src);
+	void translate(ptr_t src);
 
 };
 

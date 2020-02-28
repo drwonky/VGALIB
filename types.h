@@ -20,6 +20,7 @@
 #include <conio.h>
 #else
 #define far 
+#define huge
 #endif
 
 #ifdef __GNUC__
@@ -35,5 +36,6 @@
 		((((x) & 0xff00) >> 8) | (((x) & 0x00ff) << 8))
 
 typedef unsigned char far * ptr_t;
+typedef unsigned char huge * hptr_t;
 
 #endif
