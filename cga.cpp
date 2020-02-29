@@ -250,7 +250,6 @@ void cga::translate(ptr_t src)
 			asm {
 				lodsd				// 5
 										//                       HHHH HHHH LLLL LLLL
-				and		eax, 0x03030303	// 2 0000 00xx 0000 00xx 0000 00xx 0000 00xx
 				shl		al, 2       	// 3 0000 00xx 0000 00xx 0000 00xx 0000 xx00
 				or		al, ah      	// 2 0000 00xx 0000 00xx 0000 00xx 0000 xxxx
 				ror		eax, 16     	// 3 0000 00xx 0000 xxxx 0000 00xx 0000 00xx
@@ -271,7 +270,6 @@ void cga::translate(ptr_t src)
 
 				lodsd				// 5
 										//                       HHHH HHHH LLLL LLLL
-				and		eax, 0x03030303	// 2 0000 00xx 0000 00xx 0000 00xx 0000 00xx
 				shl		al, 2       	// 3 0000 00xx 0000 00xx 0000 00xx 0000 xx00
 				or		al, ah      	// 2 0000 00xx 0000 00xx 0000 00xx 0000 xxxx
 				ror		eax, 16     	// 3 0000 00xx 0000 xxxx 0000 00xx 0000 00xx
@@ -290,6 +288,7 @@ void cga::translate(ptr_t src)
 			}                       // 44
 
 			break;
+
 		case CGAHI:
 			_DX=_height>>2;
 			_SI=FP_OFF(src);
@@ -394,7 +393,6 @@ void cga::vsync(void)
 
 bool cga::setpalette(palette::pal_type pal)
 {
-	// TODO
 	_cur_palette = pal;
 
 	switch (pal) {
@@ -434,8 +432,7 @@ bool cga::setpalette(palette::pal_type pal)
 		break;
 	}
 
-	printf("pal %02x %02x\n",pal,pal_reg.reg);
-//	outportb(PAL_REG,pal_reg.reg);
+	outportb(PAL_REG,pal_reg.reg); // @suppress("Function cannot be resolved")
 
 	return true;
 }

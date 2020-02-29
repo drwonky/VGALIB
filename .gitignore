@@ -13,6 +13,7 @@
 *.jpg
 *.CSM
 *.TD
+*.$ln
 
 emdemo
 emx16demo

@@ -7,7 +7,7 @@
 #include "png.h"
 #include "vtext.h"
 #include "adapter.h"
-#include "cga.h"
+#include "ega.h"
 
 #ifdef __GNUC__
 #include <iostream>
@@ -31,14 +31,13 @@ int main(void)
 //	adapter::Adapters card = adapter::detect();
 //	printf("Detected %d\n",card);
 
-	adapter *display = adapter::init(adapter::CGA);
+	adapter *display = adapter::init(adapter::EGA);
 
 	canvas &screen = display->screen;
 
 	printf("About to go graphics...\n");
-	display->graphmode(adapter::CGALO1);
-//	display->overscan(0x09);
-	display->setpalette(palette::CGA1HI_PAL);
+	display->graphmode(adapter::EGALO);
+//	display->setpalette(palette::CGA1HI_PAL);
 	canvas::setdefpalette(display->getpalette());
 //	canvas::setdefpalette(palette::CGA1_PAL);
 
@@ -46,7 +45,7 @@ int main(void)
 	image bg;
 
 	printf("Loading images...\n");
-	png::loadimage("mario4.png", mario);
+	png::loadimage("mario16.png", mario);
 
 	w=mario.width();
 	h=mario.height();

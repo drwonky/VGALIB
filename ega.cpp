@@ -106,24 +106,37 @@ bool ega::x16mode(void)
 {
 #ifdef __BORLANDC__
 	unsigned char status;
+	unsigned char switches;
 
 	_AL=(unsigned char) TEXT;
 	_AH=0;
 	geninterrupt(0x10);
 
+	_AH=0x12;
+	_AL=0;
+	_BL=0x10;
+	geninterrupt(0x10);		/* get EGA switch settings */
 
-	//disable EGA blink
-	status=inportb(0x3da);
-	outportb(0x3c0,0x30);
-	status=inportb(0x3c1);
+	switches = _CL;
 
-	if (status != 0xFF) {  // EGA presumed, turn 80x50 into 80x100
+	_AL=0x03;
+	_AH=0x10;
+	_BL=0;
+	geninterrupt(0x10);		/* turn off blink via EGA BIOS */
 
-		status&=0xf7;
-		outportb(0x3c0,status);
-		write_crtc(CRTCb,0x09,0x03);
+	/* EGA hires mode is 640x350 with a 9x14 character cell.  The pixel aspect
+		ratio is 1:1.37, so if we make the blocks 3 scans tall you get a square
+		pixel at 160x100, but some of the scan lines are not used (50) */
 
-	}
+	if (
+		switches == 0x09 ||		/* EGA Hires monitor attached, 9x14 */
+		switches == 0xB		/* EGA with Monochrome monitor, 9x14 */
+		) {
+			write_crtc(CRTCb,0x09,0x02);
+		} else {						/* Must be CGA 8x8 on EGA card */
+			write_crtc(CRTCb,0x09,0x01);
+		}
+
 
 	_vmode=X16;
 
@@ -220,7 +233,56 @@ void ega::translate(ptr_t src)
 			break;
 
 		case EGALO:
-			memory::blit(_buffer,src,buf_size);
+			_CX=buf_size<<1;
+			_DI=FP_OFF(_buffer);
+			_SI=FP_OFF(src);
+			_BX=FP_SEG(src);
+			_DS=_BX;
+			_AX=FP_SEG(_buffer);
+			_ES=_AX;
+
+			asm {					// setup write mode 2
+				mov		dx, GDCi
+				mov		al, 5
+				out		dx, al
+				inc		dx
+				mov		al, 0x02
+				out		dx, al
+				mov		dx, SCi
+				mov		al, 2
+				out		dx, al
+				mov		al, 0x0F
+				inc		dx
+				out		dx, al
+				mov		dx, GDCi
+				mov		al, 3
+				out 	dx, al
+				inc		dx
+				mov		al, 0
+				out		dx, al
+				mov		dx, GDCi
+				mov		al, 8
+				out		dx, al		// select bit mask register
+				inc		dx
+				mov		al, 0x80
+			}
+		xlatelo:
+			asm{
+				out		dx, al		// mask current pixel bit
+				mov		ah,al
+				mov		al,es:[di]
+				lodsb
+				stosb
+				mov		al,ah
+				ror		al, 1		// shift mask right 1 bit/pixel
+				jc		incdi
+				dec		di
+			}
+			incdi:
+			asm {
+				loop	xlatelo
+			}                       // 44
+
 			break;
 	}
 #endif

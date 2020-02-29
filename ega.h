@@ -8,9 +8,9 @@
 #ifndef EGA_H_
 #define EGA_H_
 
-#ifdef __BORLANDC__
-#define KBHIT kbhit
-#endif
+#define GDCi 0x3CE
+#define ATCi 0x3C0
+#define SCi 0x3C4
 
 #include "image.h"
 #include "adapter.h"
