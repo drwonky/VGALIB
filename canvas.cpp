@@ -608,29 +608,32 @@ void canvas::drawimage(int x, int y, canvas& img, bool transparent)
 	int32_t cnt,w,h,iw;
 	ptr_t rem,dest;
 
-	iw=w=img.width();
-	h=img.height();
-
 	if (x>_width-1 || y>_height-1 || x<0 || y<0) return;
 
 	dest=_buffer+(y*_width+x);
 	rem=img._buffer;
 
-	if (x==0 && w==_width && !transparent) {  // src is same width as dest, can just do partial or full block copy
+	// This implements clipping
+	w=iw=img.width();
+	if (x+w > _width-1) w = _width-x;
+
+	if (!transparent && x==0 && w==_width) {  // src is same width as dest, can just do partial or full block copy
 		memory::blit(dest,rem, h < (_height - y) ? img._size : (_height - y) * _width);
 		return;
 	}
 
-	// This implements clipping
-	w=x+w > _width-1 ? _width-x : w;
-	h=y+h > _height-1 ? _height-y : h;
+	h=img.height();
+
+	if (y+h > _height-1) h = _height-y;
+
 	cnt=h;
 
 	if (transparent) {
+		unsigned char mask=img.getbg();
 		while(cnt) {
-			memory::mask_memcpy(dest,rem,w,img.getbg());
+			memory::mask_memcpy(dest,rem,w,mask);	// width is clipped to w
 			dest+=_width;
-			rem+=iw;
+			rem+=iw;								// if clipping, skip 1 row length
 			cnt--;
 		}
 	} else {
