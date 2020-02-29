@@ -166,7 +166,7 @@ bool png::load(const char *file)
 	in.open(file,fstream::binary);
 
 	if (!in) {
-		cerr << "error opening" << file << endl;
+		cerr << "__FILE__:__LINE__ error opening" << file << endl;
 		_errno = OPEN;
 		return false;
 	}
