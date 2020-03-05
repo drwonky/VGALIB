@@ -289,6 +289,14 @@ const palette::pal_t palette::rgb8bpp_pal[] = {
 	#include "RRRGGGBBs.h"
 };
 
+const palette::pal_t palette::web_pal[] = {
+	#include "web_pal.h"
+};
+
+const palette::pal_t palette::x11_pal[] = {
+	#include "x11_pal.h"
+};
+
 const palette::pal_t palette::cga0_pal[] = {
 /*black*/			{0,0,0},
 /*green*/			{0,168,0},
@@ -347,7 +355,9 @@ const palette::palette_def palette::palettes[] =
 { palette::CGA2HI_PAL, 	4, 		palette::cga2hi_pal 	},
 { palette::BW_PAL, 		2, 		palette::bw_pal 		},
 { palette::VGA_PAL, 	256, 	palette::vga_pal 		},
-{ palette::RGB_PAL, 	256, 	palette::rgb8bpp_pal	}
+{ palette::RGB_PAL, 	256, 	palette::rgb8bpp_pal	},
+{ palette::WEB_PAL, 	256, 	palette::web_pal	},
+{ palette::X11_PAL, 	256, 	palette::x11_pal	}
 };
 
 

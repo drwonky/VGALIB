@@ -31,6 +31,8 @@ public:
 		BW_PAL,
 		VGA_PAL,
 		RGB_PAL,
+		WEB_PAL,
+		X11_PAL,
 		CUSTOM,
 		NONE = 255
 	};
@@ -45,6 +47,8 @@ public:
 	static const pal_t cga1hi_pal[];
 	static const pal_t cga2hi_pal[];
 	static const pal_t rgb8bpp_pal[];
+	static const pal_t web_pal[];
+	static const pal_t x11_pal[];
 
 	typedef struct
 	{
