@@ -432,7 +432,7 @@ bool cga::setpalette(palette::pal_type pal)
 		break;
 	}
 
-	outportb(PAL_REG,pal_reg.reg); // @suppress("Function cannot be resolved")
+	outportb(CGA_PAL_REG,pal_reg.reg); // @suppress("Function cannot be resolved")
 
 	return true;
 }

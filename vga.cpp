@@ -31,6 +31,7 @@ vga::vga(void)
 vga::~vga(void)
 {
 	setmode(_savedvmode);
+	if (_cur_palette == palette::CUSTOM && _palette) delete _palette;
 }
 
 bool vga::setup(void)
@@ -239,13 +240,57 @@ void vga::vsync(void)
 
 bool vga::setpalette(palette::pal_type pal)
 {
-	// TODO
-	_cur_palette = pal;
+	if (!adapter::setpalette(pal)) return false;
+
+	setpalentries((palette::pal_t *)palette::palettes[pal].pal,palette::palettes[pal].palette_entries);
 	return true;
 }
 
 bool vga::setpalette(palette::pal_t *pal, int palette_entries)
 {
-	// TODO
+	if (_cur_palette == palette::CUSTOM && _palette) delete _palette;
+	_palette_size=palette_entries;
+	_cur_palette=palette::CUSTOM;
+	_palette=new palette::pal_t[_palette_size];
+
+	if (_palette == NULL) return false;
+
+	memcpy(_palette,pal,sizeof(palette::pal_t)*_palette_size);
+
+	setpalentries(pal,palette_entries);
+
 	return true;
+}
+
+void vga::setpalentries(palette::pal_t *pal, int palette_entries)
+{
+	outportb(VGA_PAL_MASK,0xff);
+	outportb(VGA_PAL_REG,0);
+	for(int i=0;i<_palette_size;i++) {
+		outportb(VGA_PAL_DATA,pal[i].r>>2);
+		outportb(VGA_PAL_DATA,pal[i].g>>2);
+		outportb(VGA_PAL_DATA,pal[i].b>>2);
+	}
+}
+
+void vga::setpalentry(unsigned char index, unsigned char r, unsigned char g, unsigned char b)
+{
+#ifdef __BORLANDC__
+	  asm {
+	    mov dx, VGA_PAL_REG
+	    mov al, index
+	    out dx, al
+
+	    inc dx
+	    mov al,r
+		shr al,2
+	    out dx, al
+	    mov al, g
+		shr al,2
+	    out dx, al
+	    mov al, b
+		shr al,2
+	    out dx, al
+	  }
+#endif
 }

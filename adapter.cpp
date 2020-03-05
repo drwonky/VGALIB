@@ -44,11 +44,7 @@ bool adapter::setpalette(palette::pal_type pal)
 {
 	_palette_size=palette::palettes[pal].palette_entries;
 	_cur_palette=pal;
-	_palette=new palette::pal_t[_palette_size];
-
-	if (_palette == NULL) return false;
-
-	memcpy(_palette,palette::palettes[pal].pal,sizeof(palette::pal_t)*_palette_size);
+	_palette=(palette::pal_t *)palette::palettes[pal].pal;
 
 	return true;
 }

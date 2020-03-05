@@ -19,6 +19,7 @@ emdemo
 emx16demo
 vgademo
 png
+.settings/
 
 #just ref material
 rgbhsv.cpp

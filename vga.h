@@ -11,6 +11,10 @@
 #include "image.h"
 #include "adapter.h"
 
+#define VGA_PAL_MASK 0x3c6
+#define VGA_PAL_REG 0x3c8
+#define VGA_PAL_DATA 0x3c9
+
 class vga : public adapter
 {
 protected:
@@ -20,6 +24,8 @@ protected:
 protected:
 	void write_crtc(unsigned int port, unsigned char reg, unsigned char val);
 	bool x16mode(void);
+	void setpalentries(palette::pal_t *pal, int palette_entries);
+	void setpalentry(unsigned char index, unsigned char r, unsigned char g, unsigned char b);
 
 public:
 	vga(void);

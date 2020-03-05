@@ -41,6 +41,7 @@ sdl::sdl(void)
 
 sdl::~sdl(void)
 {
+	if (_cur_palette == palette::CUSTOM && _palette) delete _palette;
 	if (SDLonce) {
 		if (_render) SDL_FreeSurface(_render);
 		if (_screen) SDL_FreeSurface(_screen);
@@ -73,9 +74,8 @@ bool sdl::setup(void)
 }
 
 bool sdl::setpalette(palette::pal_type pal)
-
 {
-	adapter::setpalette(pal);
+	if (!adapter::setpalette(pal)) return false;
 
 	SDL_Palette* sdl_palette = SDL_AllocPalette(_palette_size);
 

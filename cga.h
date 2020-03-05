@@ -8,7 +8,7 @@
 #ifndef CGA_H_
 #define CGA_H_
 
-#define PAL_REG 0x3d9
+#define CGA_PAL_REG 0x3d9
 #include "image.h"
 #include "adapter.h"
 
