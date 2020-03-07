@@ -603,12 +603,11 @@ void png::filter(void)
 bool png::convert(image& img)
 {
 	int x,y,i,index;
-	unsigned char *pemap;
-	unsigned char p,shiftbits;
+	unsigned char *pemap=NULL;
+	unsigned char p;
 
 	palette::pal_t ip;
 	palette::pal_t *pixel;
-	palette::pala_t *pixela;
 	short gray_pixel;
 
 	if (!img.size(_width,_height)) {
@@ -616,11 +615,6 @@ bool png::convert(image& img)
 	}
 
 	debug(printhex(_image_buffer);)
-
-	bool small_image=(_width*_height<512*512) ? true : false;  // a bit of optimization to reduce the cost of quantizing colors of RGB images, the threshold tradeoff is 512x512
-
-	if (small_image) shiftbits=0; // We optimize the palette lookup by truncating 24bpp images to 18bbp to match VGA color space, no need to optimize if we have a small image
-	else shiftbits=2;
 
 	switch(_colors) {
 		case GRAYA:
@@ -695,73 +689,24 @@ bool png::convert(image& img)
 				}
 			}
 
-			delete[] pemap;
 			break;
 		}
 		case RGBA: {
 			_pal_size=img.palette_size();
 
-			if (!small_image) {
-				pemap = new unsigned char[64*64*64]; // VGA is 6+6+6 so this is a hack to convert truecolor to the VGA 18 bit color space
-				memset(pemap,255,64*64*64);
-				/*
-				for (unsigned char x=0;x<64;x++) {
-					for (unsigned char y=0;y<64;y++) {
-						for (unsigned char z=0;z<64;z++) {
-							ip.r=x<<2;
-							ip.g=y<<2;
-							ip.b=z<<2;
-							index = x*64*64+y*64+z;
-							pemap[index]=img.findnearestpalentry(&ip);
-	//						cout <<"Index ["<<index<<"] = "<<(int)pemap[index]<<endl;
-						}
-					}
-				}
-				*/
-
-				debug(cout<<"Built pemap 64x64x64"<<endl;)
-				ip.r=(unsigned char)_bg.rgb.r;
-				ip.g=(unsigned char)_bg.rgb.g;
-				ip.b=(unsigned char)_bg.rgb.b;
-				img.setbg(img.findnearestpalentry(&ip));
-//				img.setbg(pemap[((_bg.rgb.r>>2)*64*64)+((_bg.rgb.g>>2)*64)+(_bg.rgb.b>>2)]);
-				debug(cout<<"BG small pal entry: "<<(int)img.getbg()<<endl;)
-			} else {
-				ip.r=(unsigned char)_bg.rgb.r;
-				ip.g=(unsigned char)_bg.rgb.g;
-				ip.b=(unsigned char)_bg.rgb.b;
-				img.setbg(img.findnearestpalentry(&ip));
-				debug(cout<<"BG pal entry: "<<(int)img.getbg()<<endl;)
-			}
+			ip.r=(unsigned char)_bg.rgb.r;
+			ip.g=(unsigned char)_bg.rgb.g;
+			ip.b=(unsigned char)_bg.rgb.b;
+			img.setbg(img.findnearestpalentry(&ip));
+			debug(cout<<"BG pal entry: "<<(int)img.getbg()<<endl;)
 
 			switch (_depth) {
 				case 8:
 					i=0;
 					for (y=0;y<_height;y++) {
 						for(x=0;x<_width;x++) {
-							pixela=(palette::pala_t *)&_image_buffer[y*(_scanline_size+1)+1+(x*sizeof(palette::pala_t))];
-							debug(printf("r: %02x g: %02x b: %02x a: %02x\n",pixela->r,pixela->g,pixela->b,pixela->a);)
-							/*
-							pixela->r=pixela->r>>shiftbits;
-							pixela->g=pixela->g>>shiftbits;
-							pixela->b=pixela->b>>shiftbits;
-							*/
-							pixel=(palette::pal_t *)pixela;
-//							index=(pixel->r>>shiftbits)*64*64+(pixel->g>>shiftbits)*64+(pixel->b>>shiftbits);
+							pixel=(palette::pal_t *)&_image_buffer[y*(_scanline_size+1)+1+(x*sizeof(palette::pala_t))];
 							img._buffer[i]=img.findnearestpalentry(pixel);
-							/*
-							if (small_image) {
-								img._buffer[i]=img.findnearestpalentry(pixel);
-							} else {
-								if (pemap[index] == 255) {
-									uncached++;
-									pemap[index]=img.findnearestpalentry(pixel);
-								} else {
-									cached++;
-								}
-								img._buffer[i]=pemap[index];
-							}
-							*/
 							i++;
 						}
 					}
@@ -770,40 +715,18 @@ bool png::convert(image& img)
 					break;
 			}
 
-//			if (!small_image) delete[] pemap;
 			break;
 		}
 		case RGB: {
 			_pal_size=img.palette_size();
 
-			if (!small_image) {
-				pemap = new unsigned char[64*64*64]; // VGA is 6+6+6 so this is a hack to convert truecolor to the VGA 18 bit color space
-				for (unsigned char x=0;x<64;x++) {
-					for (unsigned char y=0;y<64;y++) {
-						for (unsigned char z=0;z<64;z++) {
-							ip.r=x<<2;
-							ip.g=y<<2;
-							ip.b=z<<2;
-							index = x*64*64+y*64+z;
-							pemap[index]=img.findnearestpalentry(&ip);
-	//						cout <<"Index ["<<index<<"] = "<<(int)pemap[index]<<endl;
-						}
-					}
-				}
-
-				debug(cout<<"Built pemap 64x64x64"<<endl;)
-
-				img.setbg(pemap[((_bg.rgb.r>>2)*64*64)+((_bg.rgb.g>>2)*64)+(_bg.rgb.b>>2)]);
-				debug(cout<<"BG small pal entry: "<<(int)img.getbg()<<endl;)
-			} else {
-				ip.r=(unsigned char)_bg.rgb.r;
-				ip.g=(unsigned char)_bg.rgb.g;
-				ip.b=(unsigned char)_bg.rgb.b;
-				debug(cout<<"Raw bg rgb "<<(int)ip.r<<" "<<(int)ip.g<<" "<<(int)ip.b<<endl;)
-				img.setbg(img.findnearestpalentry(&ip));
-				debug(printf("raw pal %02x %02x %02x\n",(img.getpalette())[img.getbg()].r,(img.getpalette())[img.getbg()].g,(img.getpalette())[img.getbg()].b);)
-				debug(cout<<"BG pal entry: "<<(int)img.getbg()<<endl;)
-			}
+			ip.r=(unsigned char)_bg.rgb.r;
+			ip.g=(unsigned char)_bg.rgb.g;
+			ip.b=(unsigned char)_bg.rgb.b;
+			debug(cout<<"Raw bg rgb "<<(int)ip.r<<" "<<(int)ip.g<<" "<<(int)ip.b<<endl;)
+			img.setbg(img.findnearestpalentry(&ip));
+			debug(printf("raw pal %02x %02x %02x\n",(img.getpalette())[img.getbg()].r,(img.getpalette())[img.getbg()].g,(img.getpalette())[img.getbg()].b);)
+			debug(cout<<"BG pal entry: "<<(int)img.getbg()<<endl;)
 
 			switch (_depth) {
 				case 8:
@@ -812,26 +735,17 @@ bool png::convert(image& img)
 					for (y=0;y<_height;y++) {
 						for(x=0;x<_width;x++) {
 							pixel=(palette::pal_t *)&_image_buffer[y*(_scanline_size+1)+1+(x*sizeof(palette::pal_t))];
-							debug(printf("r: %02x g: %02x b: %02x =>",pixel->r,pixel->g,pixel->b);)
-							//debug(printf("pel: %02x\n",p);)
-							pixel->r=pixel->r>>shiftbits;
-							pixel->g=pixel->g>>shiftbits;
-							pixel->b=pixel->b>>shiftbits;
-							debug(printf(" r: %02x g: %02x b: %02x => ",pixel->r,pixel->g,pixel->b);)
-							index=pixel->r*64*64+pixel->g*64+pixel->b;
-							img._buffer[i]=small_image ? img.findnearestpalentry(pixel) : pemap[index];
+							img._buffer[i]=img.findnearestpalentry(pixel);
 							debug(printf("%d\n",(int)img._buffer[i]);)
 							debug(printf("raw pel %02x %02x %02x\n",(img.getpalette())[img._buffer[i]].r,(img.getpalette())[img._buffer[i]].g,(img.getpalette())[img._buffer[i]].b);)
 							i++;
 						}
 					}
-					std::cout<<"uncached: "<<img.miss<<" cached: "<<img.hit<<" hits/misses: "<<(float)img.hit/img.miss<<std::endl;
 					break;
 				case 16:
 					break;
 			}
 
-//			if (!small_image) delete[] pemap;
 			break;
 		}
 		case INDEXED: {
@@ -887,11 +801,11 @@ bool png::convert(image& img)
 			}
 
 			img.setbg(pemap[_bg.ndx]);
-//			delete[] pemap;
 			break;
 		}
 	}
 
+	if (pemap) delete[] pemap;
 	return true;
 }
 
