@@ -13,6 +13,8 @@
 #include <iostream>
 #include <zlib.h>
 
+#include <sys/time.h>
+
 using namespace std;
 
 #endif
@@ -602,16 +604,26 @@ void png::filter(void)
 
 bool png::convert(image& img)
 {
-	int x,y,i,index;
+	int x,y,i,index,shiftbits;
 	unsigned char *pemap=NULL;
 	unsigned char p;
-
 	palette::pal_t ip;
 	palette::pal_t *pixel;
 	short gray_pixel;
 
+#ifndef __BORLANDC__
+	struct timeval before,after;
+	gettimeofday(&before,NULL);
+#endif
+
 	if (!img.size(_width,_height)) {
 		return false;
+	}
+
+	if (_width*_height<512*512) {
+		shiftbits=0; // We optimize the palette lookup by truncating 24bpp images to 18bbp to match VGA color space, no need to optimize if we have a small image
+	} else {
+		shiftbits=2;
 	}
 
 	debug(printhex(_image_buffer);)
@@ -692,8 +704,24 @@ bool png::convert(image& img)
 			break;
 		}
 		case RGBA: {
+			/* The only difference between RGB and RGBA handling is that we have to deal with RGBA sized pixel elements,
+			 * so the same exact code can't process both.
+			 */
 			_pal_size=img.palette_size();
 
+			/*
+			 * The ifdefs below are a concession to performance vs memory usage
+			 * On a DOS platform we can't afford 256KB, but then again hopefully we won't load
+			 * huge image.  That said, performance with the 2 stage cache is almost 3 times faster
+			 * than with just the single stage img cache.  On systems with lots of memory, we
+			 * defer to the faster path that uses more memory.  When you have a 7MB PNG that
+			 * takes a 43MB image buffer, 256KB is nothing
+			 */
+
+#ifndef __BORLANDC__
+			pemap = new unsigned char[64*64*64]; // VGA is 6+6+6 so this is a hack to convert truecolor to the VGA 18 bit color space
+			memset(pemap,255,64*64*64);
+#endif
 			ip.r=(unsigned char)_bg.rgb.r;
 			ip.g=(unsigned char)_bg.rgb.g;
 			ip.b=(unsigned char)_bg.rgb.b;
@@ -706,7 +734,19 @@ bool png::convert(image& img)
 					for (y=0;y<_height;y++) {
 						for(x=0;x<_width;x++) {
 							pixel=(palette::pal_t *)&_image_buffer[y*(_scanline_size+1)+1+(x*sizeof(palette::pala_t))];
+#ifdef __BORLANDC__
 							img._buffer[i]=img.findnearestpalentry(pixel);
+#else
+							if (shiftbits) {
+								index=(pixel->r>>shiftbits)*64*64+(pixel->g>>shiftbits)*64+(pixel->b>>shiftbits);
+								if (pemap[index] == 255) {
+									pemap[index]=img.findnearestpalentry(pixel);
+								}
+								img._buffer[i]=pemap[index];
+							} else {
+								img._buffer[i]=img.findnearestpalentry(pixel);
+							}
+#endif
 							i++;
 						}
 					}
@@ -720,6 +760,10 @@ bool png::convert(image& img)
 		case RGB: {
 			_pal_size=img.palette_size();
 
+#ifndef __BORLANDC__
+			pemap = new unsigned char[64*64*64]; // VGA is 6+6+6 so this is a hack to convert truecolor to the VGA 18 bit color space
+			memset(pemap,255,64*64*64);
+#endif
 			ip.r=(unsigned char)_bg.rgb.r;
 			ip.g=(unsigned char)_bg.rgb.g;
 			ip.b=(unsigned char)_bg.rgb.b;
@@ -734,7 +778,19 @@ bool png::convert(image& img)
 					for (y=0;y<_height;y++) {
 						for(x=0;x<_width;x++) {
 							pixel=(palette::pal_t *)&_image_buffer[y*(_scanline_size+1)+1+(x*sizeof(palette::pal_t))];
+#ifdef __BORLANDC__
 							img._buffer[i]=img.findnearestpalentry(pixel);
+#else
+							if (shiftbits) {
+								index=(pixel->r>>shiftbits)*64*64+(pixel->g>>shiftbits)*64+(pixel->b>>shiftbits);
+								if (pemap[index] == 255) {
+									pemap[index]=img.findnearestpalentry(pixel);
+								}
+								img._buffer[i]=pemap[index];
+							} else {
+								img._buffer[i]=img.findnearestpalentry(pixel);
+							}
+#endif
 							debug(printf("%d\n",(int)img._buffer[i]);)
 							debug(printf("raw pel %02x %02x %02x\n",(img.getpalette())[img._buffer[i]].r,(img.getpalette())[img._buffer[i]].g,(img.getpalette())[img._buffer[i]].b);)
 							i++;
@@ -805,6 +861,14 @@ bool png::convert(image& img)
 	}
 
 	if (pemap) delete[] pemap;
+
+#ifndef __BORLANDC__
+	gettimeofday(&after,NULL);
+
+	debug(int interval=((after.tv_sec-before.tv_sec)*1000000)+after.tv_usec-before.tv_usec);
+	debug(cout<<"Interval "<<interval/1000<<" ms"<<endl);
+#endif
+
 	return true;
 }
 

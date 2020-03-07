@@ -59,14 +59,14 @@ int main(int argc, char *argv[])
 			break;
 		case 115:
 			if (viewport_height < img.height())
-				ypos = ypos<img.height()-screen.height() ? ypos+yincrement : img.height()-screen.height();
+				ypos = ypos+yincrement<img.height()-screen.height() ? ypos+yincrement : img.height()-screen.height();
 			break;
 		case 97:
 			xpos = xpos>xincrement ? xpos-xincrement : 0;
 			break;
 		case 100:
 			if (viewport_width < img.width())
-				xpos = xpos<img.width()-screen.width() ? xpos+xincrement : img.width()-screen.width();
+				xpos = xpos+xincrement<img.width()-screen.width() ? xpos+xincrement : img.width()-screen.width();
 			break;
 		}
 		}
