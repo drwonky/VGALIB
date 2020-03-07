@@ -730,7 +730,6 @@ bool png::convert(image& img)
 
 			switch (_depth) {
 				case 8:
-					debug(cout<<"Shiftbits: "<<shiftbits<<endl;)
 					i=0;
 					for (y=0;y<_height;y++) {
 						for(x=0;x<_width;x++) {
