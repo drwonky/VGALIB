@@ -16,20 +16,6 @@ image::image()
 {
 }
 
-
-image::image(int width, int height)
-	: canvas(width,height)
-{
-}
-
-image::image(int width, int height, pixel_t background)
-	: canvas(width,height)
-
-{
-//	size(width,height);
-	setbg(background);
-}
-
 void image::printhex(void)
 {
     int32_t i,j,b;
