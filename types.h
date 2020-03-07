@@ -8,7 +8,6 @@
 #endif
 
 #ifdef __BORLANDC__
-//enum bool {false,true};
 #define int32_t long
 #define uint32_t unsigned long
 #define CRTCa 0x3d8

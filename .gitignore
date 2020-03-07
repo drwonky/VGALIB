@@ -14,11 +14,13 @@
 *.CSM
 *.TD
 *.$ln
+*.a
 
 emdemo
 emx16demo
 vgademo
 png
+viewpng
 .settings/
 
 #just ref material

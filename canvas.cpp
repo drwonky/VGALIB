@@ -31,6 +31,10 @@ void canvas::free(void)
 		delete[] _palette;
 		_palette=NULL;
 	}
+	if (_pal_cache) {
+		delete[] _pal_cache;
+		_pal_cache=NULL;
+	}
 }
 
 canvas::canvas()
@@ -41,7 +45,7 @@ canvas::canvas()
 /*
  * User supplied memory buffer ptr (for SDL surfaces)
  */
-canvas::canvas(int width, int height, ptr_t buffer)
+canvas::canvas(int32_t width, int32_t height, ptr_t buffer)
 {
 	initvars();
 	if (buffer) {
@@ -93,6 +97,7 @@ unsigned char& canvas::operator [] (const int offset)
 
 void canvas::initvars(void)
 {
+	hit=miss=0;
 	_size=0;
 	_width=0;
 	_height=0;
@@ -100,11 +105,12 @@ void canvas::initvars(void)
 	_bgcolor=0;
 	_buffer=NULL;
 	_palette=NULL;
+	_pal_cache=NULL;
 	_palette_size=0;
 	_usr_buffer=false;
 }
 
-bool canvas::size(int width, int height)
+bool canvas::size(int32_t width, int32_t height)
 {
 	if (_buffer && !_usr_buffer) {
 		delete[] _buffer;
@@ -138,7 +144,7 @@ int canvas::bitpow(uint32_t in) // convert power of 2 decimal to bit shift count
 bool canvas::allocate(void)
 {
 	if (!_usr_buffer) {
-		_buffer=new unsigned far char [_width*_height];
+		_buffer=new unsigned far char [_size];
 	}
 
 	if(_buffer) this->clear();
@@ -195,6 +201,22 @@ unsigned char canvas::findnearestpalentry(palette::pal_t *p)
 	unsigned char lowindex=0;
 	uint32_t lowdist,distance;
 
+	if (_pal_cache != NULL) {
+		if ((i = lookuppalcache(p)) != -1)
+		{
+			hit++;
+			return (unsigned char)i;
+		} else {
+//			cout<<"miss r "<<(int)p->r<<" g "<<(int)p->g<<" b "<<(int)p->b<<endl;
+			miss++;
+		}
+	} else {
+		_pal_cache = new palette::pal_t[_palette_size];
+		for (int i=0; i<_palette_size; i++)
+			_pal_cache[i].r=_pal_cache[i].g=_pal_cache[i].b=0;
+	}
+
+
 	lowdist=0x30F201; // max possible color distance
 
 	for (i=0; i<_palette_size; i++) {
@@ -206,7 +228,24 @@ unsigned char canvas::findnearestpalentry(palette::pal_t *p)
 		}
 	}
 
-	return lowindex;
+	_pal_cache[lowindex].r=p->r;
+	_pal_cache[lowindex].g=p->g;
+	_pal_cache[lowindex].b=p->b;
+	return (unsigned char)lowindex;
+}
+
+int canvas::lookuppalcache(palette::pal_t *p)
+{
+	int i;
+
+	for (i=0; i<_palette_size; i++)
+		if (_pal_cache[i].r == p->r &&
+			_pal_cache[i].g == p->g &&
+			_pal_cache[i].b == p->b) {
+				return i;
+			}
+
+	return -1;
 }
 
 canvas::pixel_t canvas::lookuppalentry(palette::pal_t *p)
@@ -605,43 +644,47 @@ void canvas::scaleDCCI(canvas& img)
 
 void canvas::drawimage(int x, int y, canvas& img, bool transparent)
 {
-	int32_t cnt,w,h,iw;
-	ptr_t rem,dest;
+	int32_t w,h,iw;
+	ptr_t src,dest;
 
+	// if image is off screen, abort
 	if (x>_width-1 || y>_height-1 || x<0 || y<0) return;
 
 	dest=_buffer+(y*_width+x);
-	rem=img._buffer;
-
-	// This implements clipping
-	w=iw=img.width();
-	if (x+w > _width-1) w = _width-x;
-
-	if (!transparent && x==0 && w==_width) {  // src is same width as dest, can just do partial or full block copy
-		memory::blit(dest,rem, h < (_height - y) ? img._size : (_height - y) * _width);
-		return;
-	}
+	src=img._buffer;
 
 	h=img.height();
+	w=iw=img.width();
 
+	// This implements height clipping
 	if (y+h > _height-1) h = _height-y;
 
-	cnt=h;
+	// This implements width clipping
+	if (x+w > _width-1) {
+		w = _width-x;
+	} else {
+		// If the source is the same width as the dest, we can just copy a contiguous block of data, can't do this with clipping
+		if (!transparent && x==0 && w==_width) {
+//			memory::blit(dest,rem, h < (_height - y) ? img._size : (_height - y) * _width);  // this clips height
+			memory::blit(dest,src, h * w);
+			return;
+		}
+	}
 
 	if (transparent) {
 		unsigned char mask=img.getbg();
-		while(cnt) {
-			memory::mask_memcpy(dest,rem,w,mask);	// width is clipped to w
+		while(h) {
+			memory::mask_memcpy(dest,src,w,mask);	// width is clipped to w
 			dest+=_width;
-			rem+=iw;								// if clipping, skip 1 row length
-			cnt--;
+			src+=iw;								// if clipping, skip 1 row length
+			h--;
 		}
 	} else {
-		while(cnt) {
-			memory::fast_memcpy(dest,rem,w);
+		while(h) {
+			memory::fast_memcpy(dest,src,w);
 			dest+=_width;
-			rem+=iw;
-			cnt--;
+			src+=iw;
+			h--;
 		}
 	}
 }
@@ -651,8 +694,8 @@ void canvas::drawimage(int x, int y, canvas& img, bool transparent)
  */
 void canvas::drawimage(int x, int y, int sx, int sy, int width, int height, canvas& img, bool transparent)
 {
-	int32_t cnt,w,h,iw;
-	ptr_t rem,dest;
+	int32_t w,h,iw;
+	ptr_t src,dest;
 
 	iw=img.width();
 	w=width;
@@ -661,26 +704,26 @@ void canvas::drawimage(int x, int y, int sx, int sy, int width, int height, canv
 	if (x>_width-1 || y>_height-1 || x<0 || y<0) return;
 
 	dest=_buffer+(y*_width+x);
-	rem=img._buffer+(sy*img.width()+sx);
+	src=img._buffer+(sy*img.width()+sx);
 
 	// This implements clipping
 	w=x+w > _width-1 ? _width-x : w;
 	h=y+h > _height-1 ? _height-y : h;
-	cnt=h;
 
 	if (transparent) {
-		while(cnt) {
-			memory::mask_memcpy(dest,rem,w,img.getbg());
+		unsigned char mask=img.getbg();
+		while(h) {
+			memory::mask_memcpy(dest,src,w,mask);
 			dest+=_width;
-			rem+=iw;
-			cnt--;
+			src+=iw;
+			h--;
 		}
 	} else {
-		while(cnt) {
-			memory::fast_memcpy(dest,rem,w);
+		while(h) {
+			memory::fast_memcpy(dest,src,w);
 			dest+=_width;
-			rem+=iw;
-			cnt--;
+			src+=iw;
+			h--;
 		}
 	}
 }

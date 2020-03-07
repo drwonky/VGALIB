@@ -19,6 +19,11 @@ using namespace std;
 
 #include "png.h"
 
+const char *png_blk_strings[] =
+{ "IHDR", "PLTE", "IDAT", "IEND", "tRNS", "gAMA", "cHRM", "tEXt", "sRGB",
+		"bKGD", "pHYs", "sBIT", "tIME", "iTXt", 0 };
+
+
 #define BUFSIZE 8192
 
 const char *png::_err_messages[] = {
@@ -190,10 +195,10 @@ bool png::load(const char *file)
 
 	bool done=false;
 	png_blk_type type; // Type of chunk
-	uint32_t bytecount;	// Size of chunk data to read
+	uint32_t bytecount=0;	// Size of chunk data to read
 	uint32_t bytesread=0; // Tally of all bytes read in iDAT
-	uint32_t zbytesread; // Tally of how much data inflate()d
-	uint32_t zavail; // Amount of space left in _image_buffer
+	uint32_t zbytesread=0; // Tally of how much data inflate()d
+	uint32_t zavail=0; // Amount of space left in _image_buffer
 	uint32_t crc;
 	int palcnt; // Iterator for palette/trans handling
 	png_pal_entry *pe; // Palette iterator
@@ -203,7 +208,7 @@ bool png::load(const char *file)
 	char kwbuf[80];  // keyword buffer for *TXt chunks
 	int ret;
 	int trns_block_size=0;
-	unsigned char *zptr;  // location where inflate() writes data in _image_buffer
+	unsigned char *zptr=NULL;  // location where inflate() writes data in _image_buffer
 	z_stream z; // zlib stream handle
 
 	z.zalloc=Z_NULL;
@@ -447,7 +452,8 @@ bool png::load(const char *file)
 			case eiTXt:
 			case etEXt:
 				debug(cout<<"TEXT chunk "<<type<<" of size "<<_chunk->len<<endl;)
-				strncpy(kwbuf,&(tEXt->text),80);
+				strncpy(kwbuf,&(tEXt->text),sizeof(kwbuf)-1);
+				kwbuf[sizeof(kwbuf)-1]='\0';
 				ret=strlen(kwbuf);
 				debug(cout<<"Keyword: "<<kwbuf<<endl;)
 				bytecount=ret;
@@ -697,6 +703,8 @@ bool png::convert(image& img)
 
 			if (!small_image) {
 				pemap = new unsigned char[64*64*64]; // VGA is 6+6+6 so this is a hack to convert truecolor to the VGA 18 bit color space
+				memset(pemap,255,64*64*64);
+				/*
 				for (unsigned char x=0;x<64;x++) {
 					for (unsigned char y=0;y<64;y++) {
 						for (unsigned char z=0;z<64;z++) {
@@ -709,10 +717,14 @@ bool png::convert(image& img)
 						}
 					}
 				}
+				*/
 
 				debug(cout<<"Built pemap 64x64x64"<<endl;)
-
-				img.setbg(pemap[((_bg.rgb.r>>2)*64*64)+((_bg.rgb.g>>2)*64)+(_bg.rgb.b>>2)]);
+				ip.r=(unsigned char)_bg.rgb.r;
+				ip.g=(unsigned char)_bg.rgb.g;
+				ip.b=(unsigned char)_bg.rgb.b;
+				img.setbg(img.findnearestpalentry(&ip));
+//				img.setbg(pemap[((_bg.rgb.r>>2)*64*64)+((_bg.rgb.g>>2)*64)+(_bg.rgb.b>>2)]);
 				debug(cout<<"BG small pal entry: "<<(int)img.getbg()<<endl;)
 			} else {
 				ip.r=(unsigned char)_bg.rgb.r;
@@ -729,12 +741,27 @@ bool png::convert(image& img)
 						for(x=0;x<_width;x++) {
 							pixela=(palette::pala_t *)&_image_buffer[y*(_scanline_size+1)+1+(x*sizeof(palette::pala_t))];
 							debug(printf("r: %02x g: %02x b: %02x a: %02x\n",pixela->r,pixela->g,pixela->b,pixela->a);)
+							/*
 							pixela->r=pixela->r>>shiftbits;
 							pixela->g=pixela->g>>shiftbits;
 							pixela->b=pixela->b>>shiftbits;
+							*/
 							pixel=(palette::pal_t *)pixela;
-							index=pixela->r*64*64+pixela->g*64+pixela->b;
-							img._buffer[i]=small_image ? img.findnearestpalentry(pixel) : pemap[index];
+//							index=(pixel->r>>shiftbits)*64*64+(pixel->g>>shiftbits)*64+(pixel->b>>shiftbits);
+							img._buffer[i]=img.findnearestpalentry(pixel);
+							/*
+							if (small_image) {
+								img._buffer[i]=img.findnearestpalentry(pixel);
+							} else {
+								if (pemap[index] == 255) {
+									uncached++;
+									pemap[index]=img.findnearestpalentry(pixel);
+								} else {
+									cached++;
+								}
+								img._buffer[i]=pemap[index];
+							}
+							*/
 							i++;
 						}
 					}
@@ -743,7 +770,7 @@ bool png::convert(image& img)
 					break;
 			}
 
-			if (!small_image) delete[] pemap;
+//			if (!small_image) delete[] pemap;
 			break;
 		}
 		case RGB: {
@@ -798,12 +825,13 @@ bool png::convert(image& img)
 							i++;
 						}
 					}
+					std::cout<<"uncached: "<<img.miss<<" cached: "<<img.hit<<" hits/misses: "<<(float)img.hit/img.miss<<std::endl;
 					break;
 				case 16:
 					break;
 			}
 
-			if (!small_image) delete[] pemap;
+//			if (!small_image) delete[] pemap;
 			break;
 		}
 		case INDEXED: {
@@ -859,7 +887,7 @@ bool png::convert(image& img)
 			}
 
 			img.setbg(pemap[_bg.ndx]);
-			delete[] pemap;
+//			delete[] pemap;
 			break;
 		}
 	}

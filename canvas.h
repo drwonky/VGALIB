@@ -20,6 +20,8 @@ using namespace std;
 
 class canvas {
 public:
+	int	hit;
+	int miss;
 	typedef unsigned char pixel_t;
 	typedef char * string_t;
 	ptr_t _buffer;
@@ -32,6 +34,7 @@ protected:
 	pixel_t _bgcolor;
 
 	palette::pal_t *_palette;
+	palette::pal_t *_pal_cache;
 	int _palette_size;
 
 	bool _usr_buffer;
@@ -47,20 +50,23 @@ protected:
 public:
 	virtual ~canvas();
 	canvas();
-	canvas(int width, int height, ptr_t buffer = NULL);
+	canvas(int32_t width, int32_t height, ptr_t buffer = NULL);
 	canvas(const canvas& img);
 	canvas& operator = (const canvas& img);
 	unsigned char& operator [] (const int offset);
 	bool pow2(uint32_t in);
 	int bitpow(uint32_t in);
 	virtual void free(void);
-	virtual bool copybuffer(ptr_t *src) { return true; }
-	virtual ptr_t getbuffer(void) { return _buffer; }
-	virtual int width(void) { return _width; }
-	virtual int height(void) { return _height; }
+	virtual ptr_t getbuffer(void) const
+		{ return _buffer; }
+	virtual int32_t width(void) const
+		{ return _width; }
+	virtual int32_t height(void) const
+		{ return _height; }
 	virtual void setpixel(int x, int y) { _buffer[y*_width+x]=_bgcolor; }
 	virtual void setpixel(int x, int y, pixel_t color) { _buffer[y*_width+x]=color; }
-	virtual pixel_t getpixel(int x, int y) { return _buffer[y*_width+x]; }
+	virtual pixel_t getpixel(int x, int y) const
+		{ return _buffer[y*_width+x]; }
 	virtual bool allocate(void);
 	virtual void drawbox(int x, int y, int width, int height, pixel_t color, bool filled = true);
 	virtual void drawimage(int x, int y, canvas& img, bool transparent = false);
@@ -76,16 +82,19 @@ public:
 	virtual void setpalette(palette::pal_t *pal);
 	static bool setdefpalette(palette::pal_type pal);
 	static void setdefpalette(palette::pal_t *pal, int size);
-	virtual const palette::pal_t *getpalette(void) const { return _palette; }
+	virtual const palette::pal_t *getpalette(void) const
+		{ return _palette; }
 	virtual int palette_size(void) const { return _palette_size; }
-	virtual palette::pal_t getpalentry(pixel_t i) const { return _palette[i]; }
+	virtual palette::pal_t getpalentry(pixel_t i) const
+		{ return _palette[i]; }
 	virtual bool copypalette(const canvas& img);
 	virtual bool copypalette(palette::pal_t *p, int size);
 	uint32_t inline wcolordist(palette::pal_t *a, palette::pal_t *b);
 	uint32_t inline colordist(palette::pal_t *a, palette::pal_t *b);
 	virtual pixel_t lookuppalentry(palette::pal_t *p);
+	virtual int lookuppalcache(palette::pal_t *p);
 	virtual pixel_t findnearestpalentry(palette::pal_t *p);
-	virtual bool size(int width, int height);
+	virtual bool size(int32_t width, int32_t height);
 	virtual void setbg(pixel_t background){ _bgcolor = background; }
 	virtual pixel_t getbg(void) { return _bgcolor; }
 	virtual void rotate(int x, int y, int width, int height, int angle) {;}

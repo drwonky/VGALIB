@@ -13,7 +13,7 @@ using namespace std;
 #include "image.h"
 
 enum png_blk_type { eIHDR, ePLTE, eIDAT, eIEND, etRNS, egAMA, ecHRM, etEXt, esRGB, ebKGD, epHYs, esBIT, etIME, eiTXt, eUND };
-static const char *png_blk_strings[] = { "IHDR","PLTE","IDAT","IEND","tRNS","gAMA","cHRM","tEXt","sRGB","bKGD","pHYs","sBIT","tIME","iTXt",0};
+extern const char *png_blk_strings[];
 const unsigned char aPNG[] = { 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A };
 
 typedef volatile struct {
