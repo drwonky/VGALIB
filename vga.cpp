@@ -78,6 +78,23 @@ bool vga::graphmode(Mode mode)
 		case VGALO:
 			setpalette(palette::VGA_PAL);
 			break;
+		case UNDEF:
+		case CGALO1:
+		case CGALO2:
+		case CGAHI:
+		case COMPAQ:
+		case HERC:
+		case BWTEXT:
+		case PCJRLO:
+		case PCJRMED:
+		case PCJRHI:
+		case EGALO:
+		case EGAMED:
+		case EGAMONO:
+		case EGAHI:
+		case VGAMONO:
+		case VGAHI:
+			return false;
 	}
 
 	_vmode=mode;
@@ -264,6 +281,7 @@ bool vga::setpalette(palette::pal_t *pal, int palette_entries)
 
 void vga::setpalentries(palette::pal_t *pal, int palette_entries)
 {
+#ifdef __BORLANDC__
 	outportb(VGA_PAL_MASK,0xff);
 	outportb(VGA_PAL_REG,0);
 	for(int i=0;i<_palette_size;i++) {
@@ -271,6 +289,7 @@ void vga::setpalentries(palette::pal_t *pal, int palette_entries)
 		outportb(VGA_PAL_DATA,pal[i].g>>2);
 		outportb(VGA_PAL_DATA,pal[i].b>>2);
 	}
+#endif
 }
 
 void vga::setpalentry(unsigned char index, unsigned char r, unsigned char g, unsigned char b)

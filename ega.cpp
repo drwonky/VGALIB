@@ -81,6 +81,21 @@ bool ega::graphmode(Mode mode)
 		case EGAMONO:
 			setpalette(palette::BW_PAL);
 			break;
+		case CGALO1:
+		case CGALO2:
+		case CGAHI:
+		case COMPAQ:
+		case HERC:
+		case BWTEXT:
+		case PCJRLO:
+		case PCJRMED:
+		case PCJRHI:
+		case EGAMED:
+		case VGAMONO:
+		case VGAHI:
+		case VGALO:
+		case UNDEF:
+			return false;
 	}
 
 	_vmode=mode;

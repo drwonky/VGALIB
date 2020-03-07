@@ -84,6 +84,21 @@ bool cga::graphmode(Mode mode)
 		case CGAHI:
 			setpalette(palette::BW_PAL);
 			break;
+		case UNDEF:
+		case COMPAQ:
+		case HERC:
+		case BWTEXT:
+		case PCJRLO:
+		case PCJRMED:
+		case PCJRHI:
+		case EGALO:
+		case EGAMED:
+		case EGAMONO:
+		case EGAHI:
+		case VGAMONO:
+		case VGAHI:
+		case VGALO:
+			return false;
 	}
 
 	_vmode=mode;
@@ -430,9 +445,19 @@ bool cga::setpalette(palette::pal_type pal)
 		pal_reg.data.pal = 0;
 		pal_reg.data.fg_int = 0;
 		break;
+	case palette::TEXT_PAL:
+	case palette::VGA_PAL:
+	case palette::RGB_PAL:
+	case palette::WEB_PAL:
+	case palette::X11_PAL:
+	case palette::CUSTOM:
+	case palette::NONE:
+		return false;
 	}
 
-	outportb(CGA_PAL_REG,pal_reg.reg); // @suppress("Function cannot be resolved")
+#ifdef __BORLANDC__
+	outportb(CGA_PAL_REG,pal_reg.reg);
+#endif
 
 	return true;
 }
