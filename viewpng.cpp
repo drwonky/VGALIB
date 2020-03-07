@@ -23,8 +23,10 @@ int main(int argc, char *argv[])
 	canvas &screen = display.screen;
 	png	p;
 	image img;
+	int xpos=0;
+	int ypos=0;
 
-	display.graphmode(adapter::VGAHI);
+	display.graphmode(adapter::FHD);
 	display.setpalette(palette::RGB_PAL);
 	canvas::setdefpalette(display.getpalette());
 	display.cls();
@@ -38,10 +40,41 @@ int main(int argc, char *argv[])
 	p.convert(img);
 
 	printf("Image width %d height %d\n",img.width(),img.height());
-	screen.drawimage(0,0,img);
+	int viewport_width,viewport_height;
+
+	viewport_width = img.width() > screen.width() ? screen.width() : img.width();
+	viewport_height = img.height() > screen.height() ? screen.height() : img.height();
+	screen.drawimage(0,0,xpos,ypos,viewport_width,viewport_height,img);
 	display.update();
 
-//	display.getch();
+	int ch=0;
+	int xincrement=img.width()/100;
+	int yincrement=img.height()/100;
+
+	while((ch=display.getch()) != 'q' && ch != 0) {
+		if (img.width() > screen.width() || img.height() > screen.height()) {
+		switch (ch) {
+		case 119:
+			ypos = ypos>yincrement ? ypos-yincrement : 0;
+			break;
+		case 115:
+			if (viewport_height < img.height())
+				ypos = ypos<img.height()-screen.height() ? ypos+yincrement : img.height()-screen.height();
+			break;
+		case 97:
+			xpos = xpos>xincrement ? xpos-xincrement : 0;
+			break;
+		case 100:
+			if (viewport_width < img.width())
+				xpos = xpos<img.width()-screen.width() ? xpos+xincrement : img.width()-screen.width();
+			break;
+		}
+		}
+		cout<<"got "<<(int)ch<<" xpos "<<xpos<<" ypos "<<ypos<<endl;
+		screen.drawimage(0,0,xpos,ypos,viewport_width,viewport_height,img);
+		display.update();
+	}
+
 	delete card;
 
 	return 0;
