@@ -3,6 +3,7 @@
 #include "image.h"
 #include "vtext.h"
 #include "types.h"
+#include "fonts.h"
 
 vtext::vtext()
 {
@@ -19,7 +20,7 @@ vtext::vtext(int width, int height, unsigned char background)
 	max_height=height;
 	bgcolor=background;
 	font_num=0;
-	font=&fonts[font_num];
+	font=(fontdef *)&fonts[font_num];
 	debug(printf("init vtext fontwidth %d fontheight %d\n",font->font_width,font->font_height);)
 }
 
