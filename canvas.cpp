@@ -97,7 +97,6 @@ unsigned char& canvas::operator [] (const int offset)
 
 void canvas::initvars(void)
 {
-	hit=miss=0;
 	_size=0;
 	_width=0;
 	_height=0;
@@ -204,11 +203,7 @@ unsigned char canvas::findnearestpalentry(palette::pal_t *p)
 	if (_pal_cache != NULL) {
 		if ((i = lookuppalcache(p)) != -1)
 		{
-			hit++;
 			return (unsigned char)i;
-		} else {
-//			cout<<"miss r "<<(int)p->r<<" g "<<(int)p->g<<" b "<<(int)p->b<<endl;
-			miss++;
 		}
 	} else {
 		_pal_cache = new palette::pal_t[_palette_size];

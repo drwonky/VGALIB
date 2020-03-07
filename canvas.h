@@ -20,8 +20,6 @@ using namespace std;
 
 class canvas {
 public:
-	int	hit;
-	int miss;
 	typedef unsigned char pixel_t;
 	typedef char * string_t;
 	ptr_t _buffer;
