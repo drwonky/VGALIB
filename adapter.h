@@ -47,7 +47,11 @@ public:
 		VGAMONO = 0x11,
 		VGAHI = 0x12,
 		VGALO = 0x13,
-		X16 = 0x16
+		SVGA = 0x14,
+		XGA = 0x15,
+		X16 = 0x16,
+		HD = 0xF0,
+		FHD = 0xFD
 	};
 
 	typedef struct

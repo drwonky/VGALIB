@@ -94,6 +94,10 @@ bool vga::graphmode(Mode mode)
 		case EGAHI:
 		case VGAMONO:
 		case VGAHI:
+		case SVGA:
+		case XGA:
+		case HD:
+		case FHD:
 			return false;
 	}
 

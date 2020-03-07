@@ -17,6 +17,10 @@ using namespace std;
 const adapter::video_mode sdl::video_modes[] = {
  {VGALO,320,200,320,0xa000,1,8,0xFF,0x3da,2},
  {VGAHI,640,480,640,0xa000,1,8,0xFF,0x3da,1},
+ {SVGA,800,600,800,0xa000,1,8,0xFF,0x3da,1},
+ {XGA,1024,768,1024,0xa000,1,8,0xFF,0x3da,1},
+ {HD,1280,720,1280,0xa000,1,8,0xFF,0x3da,1},
+ {FHD,1920,1080,1920,0xa000,1,8,0xFF,0x3da,1},
  {X16,160,100,160,0xb800,1,8,0xF,0x3da,4}
 };
 
@@ -144,6 +148,10 @@ bool sdl::sdlmode(Mode mode)
 bool sdl::graphmode(Mode mode)
 {
 	switch (mode) {
+		case FHD:
+		case HD:
+		case XGA:
+		case SVGA:
 		case VGAHI:
 		case VGALO:
 			setpalette(palette::VGA_PAL);

@@ -94,6 +94,10 @@ bool ega::graphmode(Mode mode)
 		case VGAMONO:
 		case VGAHI:
 		case VGALO:
+		case SVGA:
+		case XGA:
+		case HD:
+		case FHD:
 		case UNDEF:
 			return false;
 	}
