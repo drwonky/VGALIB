@@ -3,8 +3,8 @@ TLINK = tlink
 BCFLAGS = -a- -3 -Fs- -mh -O2 -v
 # -Ie:\bc45\include -Le:\bc45\lib
 
-#CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -ggdb -std=c++98
-CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -O2 -std=c++98
+CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -ggdb -std=c++98
+#CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -O2 -std=c++98
 # -DTEST -DDEBUG
 
 CC = gcc
@@ -13,16 +13,17 @@ AR = ar
 ARFLAGS = -rcs
 
 EXX = em++
-EMFLAGS = -O2 --preload-file emscripten/assets --shell-file shell_minimal.html -s USE_ZLIB=1 -s USE_SDL=2
+EMFLAGS = -O2 --preload-file emscripten/assets --shell-file shell_nothing.html -s USE_ZLIB=1 -s USE_SDL=2
 
 SRCDEP = emdemo.cpp emx16demo.cpp adapter.cpp sdl.cpp cga.cpp ega.cpp vga.cpp png.cpp image.cpp memory.cpp vtext.cpp palettes.cpp canvas.cpp
-SRC = vga.cpp sdl.cpp adapter.cpp png.cpp image.cpp memory.cpp vtext.cpp palettes.cpp canvas.cpp fonts.cpp
+SRC = vga.cpp ega.cpp cga.cpp sdl.cpp adapter.cpp png.cpp image.cpp memory.cpp vtext.cpp palettes.cpp canvas.cpp fonts.cpp
 OBJS = emdemo.o emx16demo.o vgademo.o viewpng.o vga.o ega.o cga.o adapter.o sdl.o png.o image.o memory.o vtext.o palettes.o canvas.o fonts.o
 LIBOBJS = vga.o cga.o ega.o sdl.o adapter.o png.o image.o memory.o vtext.o palettes.o canvas.o fonts.o
 BIN = emdemo emx16demo png vgademo egademo cgademo viewpng
 SDLFLAGS = $(shell sdl2-config --cflags --libs)
+EMSHELL = shell_nothing.html
 
-all: emdemo emx16demo emscripten/emdemo.html emscripten/emx16demo.html
+all: vgademo viewpng emdemo emx16demo emscripten
 
 .cpp.o:
 	$(CXX) $(CFLAGS) -c -o $@ $<
@@ -71,18 +72,20 @@ viewpng: viewpng.o vgalib.a
 vgademo: vgademo.o vga.o sdl.o adapter.o image.o memory.o png.o vtext.o palettes.o canvas.o
 	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz
 
-emdemo: emdemo.o vga.o image.o memory.o png.o vtext.o palettes.o canvas.o
+emdemo: emdemo.o vgalib.a
 	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz
 
-emx16demo: emx16demo.o vga.o image.o memory.o png.o vtext.o palettes.o canvas.o
+emx16demo: emx16demo.o vgalib.a
 	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz
 
-emscripten/emdemo.html: emdemo.cpp $(SRC)
-	$(EXX) $(EMFLAGS) -o $@ $^ 
+emscripten/emdemo.html: $(EMSHELL) emdemo.cpp $(SRC)
+	$(EXX) $(EMFLAGS) -o $@ emdemo.cpp $(SRC) 
 	
-emscripten/emx16demo.html: emx16demo.cpp $(SRC)
-	$(EXX) $(EMFLAGS) -o $@ $^ 
+emscripten/emx16demo.html: $(EMSHELL) emx16demo.cpp $(SRC)
+	$(EXX) $(EMFLAGS) -o $@ emx16demo.cpp $(SRC)
 	
+emscripten: emscripten/emdemo.html emscripten/emx16demo.html
+
 png.exe: png.cpp memory.obj image.cpp zlib.h zconf.h zlib_h.lib
 	bcc -DDEBUG -DTEST -3 -Fs- -mh -v png.cpp memory.obj image.cpp zlib_h.lib
 

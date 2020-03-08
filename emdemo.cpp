@@ -4,12 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include "image.h"
-#include "types.h"
-#include "memory.h"
-#include "png.h"
-#include "vtext.h"
-#include "vga.h"
+#include "vgalib.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -24,7 +19,7 @@ typedef struct {
 	image box;
 	image boxc;
 	image mytext;
-	vga display;
+	sdl *display;
 	unsigned int x,y,w,h,dx,dy;
 	int rot,rotx;
 } context;
@@ -34,12 +29,12 @@ void animate(void *arg)
 {
 		context *ctx=(context *)arg;
 
-		ctx->display.screen.drawimage(0,0,ctx->bg);
-		ctx->display.screen.drawsprite(ctx->display.width()-ctx->mytext.width(),2,ctx->mytext);
+		ctx->display->screen.drawimage(0,0,ctx->bg);
+		ctx->display->screen.drawsprite(ctx->display->width()-ctx->mytext.width(),2,ctx->mytext);
 		ctx->box.rotate(ctx->boxc,ctx->rot);
-		ctx->display.screen.drawsprite(ctx->x,ctx->y,ctx->boxc);
+		ctx->display->screen.drawsprite(ctx->x,ctx->y,ctx->boxc);
 
-		ctx->display.update();
+		ctx->display->update();
 		ctx->rot+=ctx->rotx;
 		if(ctx->rot>360) ctx->rot=0;
 		if(ctx->rot<0) ctx->rot=360;
@@ -47,20 +42,20 @@ void animate(void *arg)
 		ctx->x+=ctx->dx;
 		ctx->y+=ctx->dy;
 
-		if(ctx->x>ctx->display.width()-ctx->w-1 || ctx->x<1) {
+		if(ctx->x>ctx->display->width()-ctx->w-1 || ctx->x<1) {
 			ctx->dx*=-1;
 			ctx->rotx*=-1;
 			ctx->rotx=((ctx->rotx>0)-(ctx->rotx<0))*(rand()%5+1);
 		}
 
-		if(ctx->y>ctx->display.height()-ctx->h-1 || ctx->y<1) {
+		if(ctx->y>ctx->display->height()-ctx->h-1 || ctx->y<1) {
 			ctx->dy*=-1;
 			ctx->rotx*=-1;
 			ctx->rotx=((ctx->rotx>0)-(ctx->rotx<0))*(rand()%5+1);
 		}
 
 #ifdef __EMSCRIPTEN__
-		if (ctx->display.kbhit()) {
+		if (ctx->display->kbhit()) {
 			printf("Exit...\n");
 			emscripten_cancel_main_loop();
 		}
@@ -80,10 +75,11 @@ int main(void)
 
 	printf("Starting...\n");
 
-	ctx.display.graphmode(vga::VGALO);
-	ctx.display.cls();
-	ctx.display.setpalette(palette::VGA_PAL);
-	canvas::setdefpalette(ctx.display.getpalette());
+	ctx.display=new sdl();
+	ctx.display->graphmode(adapter::VGALO);
+	ctx.display->cls();
+	ctx.display->setpalette(palette::VGA_PAL);
+	canvas::setdefpalette(ctx.display->getpalette());
 
 	png mariopng;
 	image mario;
@@ -109,7 +105,7 @@ int main(void)
 
 	printf("Building...\n");
 
-	vtext text(ctx.display.width(),ctx.display.height(),0);
+	vtext text(ctx.display->width(),ctx.display->height(),0);
 	ctx.mytext.setbg(14);
 	text.drawtext(ctx.mytext,"VGA DEMO",4);
 
@@ -131,6 +127,7 @@ int main(void)
 #ifdef __EMSCRIPTEN__
     int simulate_infinite_loop = 1;
 
+    emscripten_set_canvas_size(int(ctx.display->getscalewidth()), int(ctx.display->getscaleheight()));
     emscripten_set_main_loop_arg(animate, &ctx, -1, simulate_infinite_loop);
 #else
     uint32_t start_time,end_time,sched_time;
@@ -139,7 +136,7 @@ int main(void)
     int wait;
     bool endprogram=false;
 
-    ctx.display.getEvents(20);  // debounce
+    ctx.display->getEvents(20);  // debounce
 
     do {
 		start_time=SDL_GetTicks();
@@ -150,7 +147,7 @@ int main(void)
 		wait=(sched_time - end_time);
 		wait=wait<0?0:wait;							// If render took too long it will result in negative wait.
 //		cout <<"wait delay "<<wait<<" start "<<start_time<<" sched "<<sched_time<<" end "<<end_time<<" clocks "<<clocks_per_frame<<endl;
-		if (ctx.display.getEvents(wait) != 0) {
+		if (ctx.display->getEvents(wait) != 0) {
 			endprogram=true;
 		}
     } while(!endprogram);
@@ -163,7 +160,7 @@ int main(void)
      */
     printf("quitting...\n");
 
-	ctx.display.textmode();
+    delete ctx.display;
 
 	return 0;
 }

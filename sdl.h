@@ -48,6 +48,16 @@ public:
 	int getch(void);
 	int getEvents(int ms);
 
+	unsigned int getscalewidth() const
+	{
+		return _sdlscale*_width;
+	}
+
+	unsigned int getscaleheight() const
+	{
+		return _sdlscale*_height;
+	}
+
 };
 #endif
 
