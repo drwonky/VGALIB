@@ -93,7 +93,8 @@ public:
 
 public:
 	static Adapters detect(void);
-	static adapter *init(Adapters card);
+	static adapter *create(Adapters card);
+	static adapter *initialize(void);
 
 	adapter(void);
 	virtual ~adapter(void);

@@ -34,7 +34,7 @@ int main(void)
 	adapter::Adapters card = adapter::detect();
 	printf("Detected %d\n",card);
 
-	adapter *display = adapter::init(card);
+	adapter *display = adapter::create(card);
 
 	canvas &screen = display->screen;
 

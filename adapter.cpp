@@ -146,7 +146,12 @@ adapter::Adapters adapter::detect(void)
 	return NONE;
 }
 
-adapter *adapter::init(Adapters card)
+adapter *adapter::initialize(void)
+{
+	return adapter::create(adapter::detect());
+}
+
+adapter *adapter::create(Adapters card)
 {
 	switch(card) {
 #ifdef __GNUC__
