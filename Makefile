@@ -94,8 +94,7 @@ png.exe: png.cpp memory.obj image.cpp zlib.h zconf.h zlib_h.lib
 LIBS=zlib_h.lib
 DEMOOBJS = adapter.obj memory.obj canvas.obj image.obj png.obj vtext.obj palettes.obj vga.obj ega.obj cga.obj 
 DEMOS = vgademo.exe cgademo.exe egademo.exe
-VGAOBJS = vgademo.obj $(DEMOOBJS)
-vgademo.exe: $(VGAOBJS)
+vgademo.exe: $(DEMOOBJS) vgademo.obj
 #	$(BCC) -e vgademo.exe $(VGAOBJS) zlib_h.lib
 	$(BCC) $(BCFLAGS) -e$< $** $(LIBS)
 	
