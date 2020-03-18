@@ -15,13 +15,15 @@ using namespace std;
 
 /* mode, width, height, bytes_per_line, base_addr, bpp, Bpp, colors, vsync_reg, scale */
 const adapter::video_mode sdl::video_modes[] = {
- {VGALO,320,200,320,0xa000,1,8,0xFF,0x3da,2},
- {VGAHI,640,480,640,0xa000,1,8,0xFF,0x3da,1},
- {SVGA,800,600,800,0xa000,1,8,0xFF,0x3da,1},
- {XGA,1024,768,1024,0xa000,1,8,0xFF,0x3da,1},
- {HD,1280,720,1280,0xa000,1,8,0xFF,0x3da,1},
- {FHD,1920,1080,1920,0xa000,1,8,0xFF,0x3da,1},
- {X16,160,100,160,0xb800,1,8,0xF,0x3da,4}
+{VGALO	,320	,200	,320	,0,1,8,0xFF,0,2},
+{PI3X2	,480	,320	,480	,0,1,8,0xFF,0,1},
+{PITOUCH,800	,480	,800	,0,1,8,0xFF,0,1},
+{VGAHI	,640	,480	,640	,0,1,8,0xFF,0,1},
+{SVGA	,800	,600	,800	,0,1,8,0xFF,0,1},
+{XGA	,1024	,768	,1024	,0,1,8,0xFF,0,1},
+{HD		,1280	,720	,1280	,0,1,8,0xFF,0,1},
+{FHD	,1920	,1080	,1920	,0,1,8,0xFF,0,1},
+{X16	,160	,100	,160	,0,1,8,0x0F,0,4}
 };
 
 bool sdl::SDLonce = false;

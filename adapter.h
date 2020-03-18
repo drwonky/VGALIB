@@ -50,6 +50,8 @@ public:
 		SVGA = 0x14,
 		XGA = 0x15,
 		X16 = 0x16,
+		PI3X2 = 0x32,
+		PITOUCH = 0x84,
 		HD = 0xF0,
 		FHD = 0xFD
 	};
