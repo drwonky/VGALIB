@@ -3,8 +3,8 @@ TLINK = tlink
 BCFLAGS = -a- -3 -Fs- -mh -O2 -v
 # -Ie:\bc45\include -Le:\bc45\lib
 
-CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -ggdb -std=c++98
-#CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -O2 -std=c++98
+#CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -ggdb -std=c++98
+CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -O2 -std=c++98
 # -DTEST -DDEBUG
 
 CC = gcc

@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 	adapter::Adapters detect = adapter::detect();
 	printf("Detected %d\n",detect);
 
-	adapter *card = adapter::init(detect);
+	adapter *card = adapter::create(detect);
 	adapter &display = *card;
 
 	canvas &screen = display.screen;
