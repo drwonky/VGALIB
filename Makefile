@@ -1,6 +1,7 @@
 BCC = bcc
 TLINK = tlink
-BCFLAGS = -a- -3 -Fs- -mh -O2 -v
+#BCFLAGS = -a- -3 -Fs- -mh -O2 -v
+BCFLAGS = -a- -Di86 -Fs- -mh -O2 -v
 # -Ie:\bc45\include -Le:\bc45\lib
 
 #CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -ggdb -std=c++98
@@ -69,7 +70,7 @@ vgalib.a: $(LIBOBJS)
 viewpng: viewpng.o vgalib.a
 	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz
 
-vgademo: vgademo.o vga.o sdl.o adapter.o image.o memory.o png.o vtext.o palettes.o canvas.o
+vgademo: vgademo.o sdl.o adapter.o image.o memory.o png.o vtext.o palettes.o canvas.o fonts.o
 	$(CXX) $(CFLAGS) $(SDLFLAGS) -o $@ $^ -lz
 
 emdemo: emdemo.o vgalib.a
@@ -92,7 +93,7 @@ png.exe: png.cpp memory.obj image.cpp zlib.h zconf.h zlib_h.lib
 #vgademo.exe: adapter.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj vgademo.obj vga.obj 
 #	$(BCC) $(BCFLAGS) vgademo.obj adapter.obj vga.obj memory.obj canvas.obj image.obj png.obj zlib_h.lib vtext.obj palettes.obj
 LIBS=zlib_h.lib
-DEMOOBJS = adapter.obj memory.obj canvas.obj image.obj png.obj vtext.obj palettes.obj vga.obj ega.obj cga.obj 
+DEMOOBJS = adapter.obj memory.obj canvas.obj image.obj png.obj vtext.obj palettes.obj vga.obj ega.obj cga.obj fonts.obj
 DEMOS = vgademo.exe cgademo.exe egademo.exe
 vgademo.exe: $(DEMOOBJS) vgademo.obj
 #	$(BCC) -e vgademo.exe $(VGAOBJS) zlib_h.lib
