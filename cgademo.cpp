@@ -63,17 +63,16 @@ int main(void)
 	h=hyp;
 
 	printf("Building...\n");
-	image box(w,h);
-	image boxc(w,h);
-	image boxd(w*2,h*2);
-	image boxe(w/2,h/2);
+	canvas box(w,h);
+	canvas boxc(w,h);
+	canvas boxd(w*2,h*2);
+	canvas boxe(w/2,h/2);
 	image mytext;
 //	mytext.setpalette(display->getpalette());
 
 //	display->graphmode(SDLVGALO);
 
 //	display->initsprites();
-	display->getch();
 	display->cls();
 
 	printf("Cleared\n");
