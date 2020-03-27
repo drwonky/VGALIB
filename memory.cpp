@@ -77,6 +77,45 @@ void memory::fast_memcpy(void *dest, void *src, size_t size)
 {
 
 #ifdef __BORLANDC__
+#ifdef i86
+	if (size > 2) { // long way default, byte copy the long way
+		_DI=FP_OFF(dest);
+		_SI=FP_OFF(src);
+		_BX=FP_SEG(src);
+		_DS=_BX;
+		_AX=FP_SEG(dest);
+		_ES=_AX;
+
+		asm {
+			mov bx,size	// count down size
+			mov cx, di  // dest
+			test cx, 1  // byte offset?
+			jz pre_word // no, goto work offset
+			movsb       // copy byte
+			dec bx      // 1 byte copied
+			}
+
+pre_word:
+		asm {
+			movsw       // addr must be dw aligned
+			sub bx,2    // 2 bytes copied, we are word aligned now
+			mov cx,bx
+			shr cx,1    // divide by 2 to get words remaining
+			jz post     // no words left
+			mov ax,cx
+			shl ax,1
+			sub bx,ax   // subtract dwords copied from total
+			cld
+			rep movsw   // copy dwords
+			}
+post:
+		asm {
+			test bx,1   // test number of bytes remaining
+			jz post_end // no bytes remaining
+			movsb       // copy bytes
+		}
+post_end:
+#else
 	if (size > 4) { // long way default, byte copy the long way
 		_DI=FP_OFF(dest);
 		_SI=FP_OFF(src);
@@ -127,6 +166,7 @@ post_byte:
 			movsb       // copy bytes
 		}
 post_end:
+#endif
 
 
 	} else {
@@ -161,11 +201,19 @@ void memory::blit(ptr_t dest, ptr_t src, size_t size)
 		_AX=FP_SEG(dest);
 		_ES=_AX;
 
+#ifdef i86
+		asm {
+			mov cx,size
+			shr cx,1
+			rep movsw
+		}
+#else
 		asm {
 			mov cx,size
 			shr cx,2
 			rep movsd
 		}
+#endif
 #else
 	memcpy(dest,src,size);
 #endif

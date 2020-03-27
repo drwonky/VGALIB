@@ -224,7 +224,8 @@ void cga::translate(ptr_t src)
 
 			break;
 		case X16:
-			_CX=buf_size>>2;
+#ifdef i86
+			_CX=buf_size>>1;
 			_DI=FP_OFF(_buffer);
 			_SI=FP_OFF(src);
 			_BX=FP_SEG(src);
@@ -234,8 +235,26 @@ void cga::translate(ptr_t src)
 
 		xlate16:
 			asm {
+				lodsw				// 5
+				shl		al, 4       // 3
+				or		ah, al      // 2
+				mov		al, 0xde    // 2
+				stosw               // 4
+				loop	xlate16       // 15
+			}                       // 44
+#else
+			_CX=buf_size>>2;
+			_DI=FP_OFF(_buffer);
+			_SI=FP_OFF(src);
+			_BX=FP_SEG(src);
+			_DS=_BX;
+			_AX=FP_SEG(_buffer);
+			_ES=_AX;
+
+		xlate32:
+			asm {
 				lodsd				// 5
-				and		eax, 0x0F0F0F0F // 2
+				//and		eax, 0x0F0F0F0F // 2
 				shl		al, 4       // 3
 				or		ah, al      // 2
 				mov		al, 0xde    // 2
@@ -245,8 +264,9 @@ void cga::translate(ptr_t src)
 				mov		al, 0xde    // 2
 				rol		eax, 16     // 3
 				stosd               // 4
-				loop	xlate16       // 15
+				loop	xlate32       // 15
 			}                       // 44
+#endif
 
 			break;
 
@@ -257,13 +277,62 @@ void cga::translate(ptr_t src)
 			_DI=FP_OFF(_buffer);
 			_CX=FP_SEG(src);
 			_AX=FP_SEG(_buffer);
-			_BX=_row_bytes;
 			_DS=_CX;
 			_ES=_AX;
 
+#ifdef i86
 		xlatelo:
 			asm {
-				mov cx,bx
+				mov cx, 80
+			}
+		xevenlo:
+			asm {
+				lodsw				// 5
+										//   HHHH HHHH LLLL LLLL
+				shl		al, 2       	// 3 0000 00xx 0000 xx00
+				or		al, ah      	// 2 0000 00xx 0000 xxxx
+				shl		al, 4      	    // 2 0000 00xx xxxx 0000
+				mov		bx, ax
+
+				lodsw
+				shl		al, 2       	// 3 0000 00xx 0000 xx00
+				or		al, ah      	// 2 0000 00xx 0000 xxxx
+				or		al, bl      	// 2 0000 0000 xxxx xxxx
+				stosb               	// 4
+
+				loop	xevenlo       	//
+
+				push	di
+				add		di, 0x1FB0
+
+				mov		cx, 80
+			}                       // 44
+		xoddlo:
+			asm {
+				lodsw				// 5
+										//   HHHH HHHH LLLL LLLL
+				shl		al, 2       	// 3 0000 00xx 0000 xx00
+				or		al, ah      	// 2 0000 00xx 0000 xxxx
+				shl		al, 4      	    // 2 0000 00xx xxxx 0000
+				mov		bx, ax
+
+				lodsw
+				shl		al, 2       	// 3 0000 00xx 0000 xx00
+				or		al, ah      	// 2 0000 00xx 0000 xxxx
+				or		al, bl      	// 2 0000 0000 xxxx xxxx
+				stosb               	// 4
+
+				loop	xoddlo       	//
+
+				pop		di
+
+				dec		dx
+				jnz		xlatelo
+			}                       // 44
+#else
+		xlatelo:
+			asm {
+				mov cx,80
 			}
 		xevenlo:
 			asm {
@@ -282,7 +351,7 @@ void cga::translate(ptr_t src)
 
 				push	di
 				add		di, 0x1FB0
-				mov		cx,bx
+				mov		cx,80
 			}                       // 44
 		xoddlo:
 			asm {
@@ -305,7 +374,7 @@ void cga::translate(ptr_t src)
 				dec		dx
 				jnz		xlatelo
 			}                       // 44
-
+#endif
 			break;
 
 		case CGAHI:
@@ -318,6 +387,93 @@ void cga::translate(ptr_t src)
 			_DS=_CX;
 			_ES=_AX;
 
+#ifdef i86
+		xlatehi:
+			asm {
+				mov cx,80
+			}
+		xevenhi:
+			asm {
+				lodsw				// 5
+										//                       HHHH HHHH LLLL LLLL
+				shr		ax, 1
+				rcl		bx, 1
+				shr		ax, 8
+				rcl		bx, 1
+
+				lodsw
+
+				shr		ax, 1
+				rcl		bx, 1
+				shr		ax, 8
+				rcl		bx, 1
+
+				lodsw
+
+				shr		ax, 1
+				rcl		bx, 1
+				shr		ax, 8
+				rcl		bx, 1
+
+				lodsw
+
+				shr		ax, 1
+				rcl		bx, 1
+				shr		ax, 8
+				rcl		bx, 1
+//				mov		ax,bx
+				mov		es:[di],bl
+				inc		di
+//				stosb               	// 4
+
+				loop	xevenhi       	//
+
+				push	di
+				add		di, 0x1FB0
+				mov		cx,80
+			}                       // 44
+		xoddhi:
+			asm {
+
+				lodsw				// 5
+										//                       HHHH HHHH LLLL LLLL
+				shr		ax, 1
+				rcl		bx, 1
+				shr		ax, 8
+				rcl		bx, 1
+
+				lodsw
+
+				shr		ax, 1
+				rcl		bx, 1
+				shr		ax, 8
+				rcl		bx, 1
+
+				lodsw
+
+				shr		ax, 1
+				rcl		bx, 1
+				shr		ax, 8
+				rcl		bx, 1
+
+				lodsw
+
+				shr		ax, 1
+				rcl		bx, 1
+				shr		ax, 8
+				rcl		bx, 1
+//				mov		ax,bx
+				mov		es:[di],bl
+				inc		di
+										//                       HHHH HHHH LLLL LLLL
+				loop	xoddhi       	//
+
+				pop		di
+
+				dec		dx
+				jnz		xlatehi
+			}                       // 44
+#else
 		xlatehi:
 			asm {
 				mov cx,80
@@ -389,6 +545,7 @@ void cga::translate(ptr_t src)
 				dec		dx
 				jnz		xlatehi
 			}                       // 44
+#endif
 
 			break;
 	}

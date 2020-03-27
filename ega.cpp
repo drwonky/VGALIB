@@ -225,6 +225,25 @@ void ega::translate(ptr_t src)
 
 			break;
 		case X16:
+#ifdef i86
+			_CX=buf_size>>1;
+			_DI=FP_OFF(_buffer);
+			_SI=FP_OFF(src);
+			_BX=FP_SEG(src);
+			_DS=_BX;
+			_AX=FP_SEG(_buffer);
+			_ES=_AX;
+
+		xlate16:
+			asm {
+				lodsw				// 5
+				shl		al, 4       // 3
+				or		ah, al      // 2
+				mov		al, 0xde    // 2
+				stosw               // 4
+				loop	xlate16       // 15
+			}                       // 44
+#else
 			_CX=buf_size>>2;
 			_DI=FP_OFF(_buffer);
 			_SI=FP_OFF(src);
@@ -233,10 +252,10 @@ void ega::translate(ptr_t src)
 			_AX=FP_SEG(_buffer);
 			_ES=_AX;
 
-		xlate1:
+		xlate32:
 			asm {
 				lodsd				// 5
-				and		eax, 0x0F0F0F0F // 2
+				//and		eax, 0x0F0F0F0F // 2
 				shl		al, 4       // 3
 				or		ah, al      // 2
 				mov		al, 0xde    // 2
@@ -246,8 +265,9 @@ void ega::translate(ptr_t src)
 				mov		al, 0xde    // 2
 				rol		eax, 16     // 3
 				stosd               // 4
-				loop	xlate1       // 15
+				loop	xlate32       // 15
 			}                       // 44
+#endif
 
 			break;
 
