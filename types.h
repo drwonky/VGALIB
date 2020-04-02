@@ -24,6 +24,7 @@
 
 #ifdef __GNUC__
 #include <stdint.h>
+#include <stddef.h>
 #define USESDL
 #endif
 
@@ -35,5 +36,7 @@
 		((((x) & 0xff00) >> 8) | (((x) & 0x00ff) << 8))
 
 typedef unsigned char far * ptr_t;
+typedef unsigned char pixel_t;
+typedef char * string_t;
 
 #endif

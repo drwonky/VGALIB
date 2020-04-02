@@ -23,14 +23,30 @@ canvas::~canvas()
 
 void canvas::free(void)
 {
-	if (_buffer && !_usr_buffer) {
-		delete[] _buffer;
-		_buffer=NULL;
+
+	freebuffers();
+	freepalette();
+}
+
+void canvas::freebuffers(void)
+{
+	if (!_usr_buffer) {
+		for (int i=0; i<_planes;i++) {
+			if (_plane[i]) {
+				delete[] _plane[i];
+				_planes[i]=NULL;
+			}
+		}
 	}
+}
+
+void canvas::freepalette(void)
+{
 	if (_palette) {
 		delete[] _palette;
 		_palette=NULL;
 	}
+
 	if (_pal_cache) {
 		delete[] _pal_cache;
 		_pal_cache=NULL;
@@ -50,20 +66,45 @@ canvas::canvas(int32_t width, int32_t height, ptr_t buffer)
 	initvars();
 	if (buffer) {
 		_usr_buffer = true;
-		_buffer = buffer;
+		_plane[0] = buffer;
 	}
+	size(width,height);
+}
+
+canvas::canvas(int32_t width, int32_t height, pixel_t bpp)
+{
+	initvars();
+	_bpp = bpp;
+
+	switch (_bpp) {
+	case 8:
+		_planes=1;
+		break;
+	default:
+		_planes=_bpp;
+		break;
+	}
+
 	size(width,height);
 }
 
 canvas::canvas(const canvas& img)
 {
+	this->free();
+
 	initvars();
+
 	_width=img._width;
 	_height=img._height;
 	_bgcolor=img._bgcolor;
+	_bpp=img._bpp;
+	_planes=img._planes;
+
 	copypalette(img);
 	allocate();
-	memory::fast_memcpy(_buffer,img._buffer,_width*_height);
+
+	for (int i=0;i<_planes;i++)
+		memory::fast_memcpy(_plane[i],img._plane[i],_size);
 }
 
 canvas& canvas::operator = (const canvas& img)
@@ -74,51 +115,55 @@ canvas& canvas::operator = (const canvas& img)
 	_colors=img._colors;
 	_bgcolor=img._bgcolor;
 
-	if (_buffer && !_usr_buffer) {
-		delete[] _buffer;
-		this->_buffer = NULL;
-	}
+	this->free();
 
-	if (img._usr_buffer) {
-		_buffer = img._buffer;
-		_usr_buffer=true;
-	}
 	copypalette(img);
 	allocate();
-	if (!img._usr_buffer) memory::fast_memcpy(_buffer,img._buffer,_width*_height);
+
+	if (img._usr_buffer) {
+		_plane[0] = img._plane[0];
+		_usr_buffer=true;
+	} else {
+		if (!img._usr_buffer) {
+			for (int i=0;i<_planes;i++)
+				memory::fast_memcpy(_plane[i],img._plane[i],_size);
+		}
+	}
 
 	return *this;
 }
 
 unsigned char& canvas::operator [] (const int offset)
 {
-	return this->_buffer[offset];
+	return this->_plane[0][offset];
 }
 
 void canvas::initvars(void)
 {
+	_bpp=8;
 	_size=0;
 	_width=0;
 	_height=0;
 	_colors=0;
+	_planes=1;
 	_bgcolor=0;
-	_buffer=NULL;
 	_palette=NULL;
 	_pal_cache=NULL;
 	_palette_size=0;
 	_usr_buffer=false;
+
+	for(int i=0; i<sizeof(_plane); i++) _plane[i]=NULL;
 }
 
 bool canvas::size(int32_t width, int32_t height)
 {
-	if (_buffer && !_usr_buffer) {
-		delete[] _buffer;
-		_buffer=NULL;
+	if (!_usr_buffer) {
 	}
+
 	_width=width;
 	_height=height;
 
-	_size=_width*_height;
+	_size=_width*_height/(8/_bpp);
 
 	return allocate();
 }
@@ -143,16 +188,30 @@ int canvas::bitpow(uint32_t in) // convert power of 2 decimal to bit shift count
 bool canvas::allocate(void)
 {
 	if (!_usr_buffer) {
-		_buffer=new unsigned far char [_size];
-	}
+		switch(_bpp) {
+		case 8:
+			_buffer=new unsigned far char [_size];
+			if(_buffer == NULL) return false;
 
-	if(_buffer) this->clear();
+			break;
+		case 4:
+		case 1:
+			for (int i=0;i < _bpp; i++) {
+				_planes[i]=new unsigned far char [_size];
+				if (_planes[i] == NULL) return false;
+			}
+			break;
+		}
+	}
 
 	if(_palette == NULL) {
 		copypalette(_default_palette, _default_palette_size);
+		if (_palette == NULL) return false;
 	}
 
-	return (bool)(_buffer != NULL && _palette != NULL);
+	this->clear();
+
+	return true;
 }
 
 void canvas::fill(pixel_t color)
@@ -167,7 +226,17 @@ void canvas::fill(pixel_t color)
 		for(ptr_t p=_buffer;p<end;p++) *p=color;
 	}
 #else
-	for(ptr_t p=_buffer;p<_buffer+_width*_height;p++) *p=color;
+	switch(_bpp) {
+	case 8:
+		for(ptr_t p=_buffer;p<_buffer+_size;p++) *p=color;
+		break;
+	case 4:
+	case 1:
+		for (int i=0; i<_bpp; i++) {
+			for(ptr_t p=_planes[i];p<_planes[i]+_size;p++) *p=(color & (1<<i));
+		}
+		break;
+	}
 #endif
 }
 
@@ -243,7 +312,7 @@ int canvas::lookuppalcache(palette::pal_t *p)
 	return -1;
 }
 
-canvas::pixel_t canvas::lookuppalentry(palette::pal_t *p)
+pixel_t canvas::lookuppalentry(palette::pal_t *p)
 {
 	int i;
 
@@ -555,7 +624,7 @@ void canvas::scale(canvas& dest, int width, int height)
 
 canvas canvas::scale(int width, int height)
 {
-	canvas ret(width,height);
+	canvas ret(width,height,_bpp);
 
 	scale(ret,width,height);
 

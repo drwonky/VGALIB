@@ -20,9 +20,8 @@ using namespace std;
 
 class canvas {
 public:
-	typedef unsigned char pixel_t;
-	typedef char * string_t;
-	ptr_t _buffer;
+	const int MAX_PLANES = 4;
+	ptr_t _plane[MAX_PLANES];
 	unsigned int _size;
 
 protected:
@@ -30,6 +29,8 @@ protected:
 	int32_t _height;
 	pixel_t _colors;
 	pixel_t _bgcolor;
+	pixel_t _bpp;
+	pixel_t _planes;
 
 	palette::pal_t *_palette;
 	palette::pal_t *_pal_cache;
@@ -49,14 +50,17 @@ public:
 	virtual ~canvas();
 	canvas();
 	canvas(int32_t width, int32_t height, ptr_t buffer = NULL);
+	canvas(int32_t width, int32_t height, pixel_t bpp);
 	canvas(const canvas& img);
 	canvas& operator = (const canvas& img);
 	unsigned char& operator [] (const int offset);
 	bool pow2(uint32_t in);
 	int bitpow(uint32_t in);
 	virtual void free(void);
+	virtual void freepalette(void);
+	virtual void freebuffers(void);
 	virtual ptr_t getbuffer(void) const
-		{ return _buffer; }
+		{ return &_plane; }
 	virtual int32_t width(void) const
 		{ return _width; }
 	virtual int32_t height(void) const
@@ -103,6 +107,10 @@ public:
 	virtual void scale(canvas& img);
 	virtual void scaleDCCI(canvas& img);
 
+	pixel_t getbpp() const
+	{
+		return _bpp;
+	}
 };
 
 #endif /* CANVAS_H_ */
