@@ -31,7 +31,7 @@ void image::printhex(void)
     for (j=0;j<_height;j++) {
         printf("%2d: ",j);
         for (i=0;i<b;i++) {
-            printf("%02x ",_buffer[j*_width+i]);
+            printf("%02x ",_plane[0][j*_width+i]);
         }
         printf("\n");
     }

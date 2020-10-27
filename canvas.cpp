@@ -21,6 +21,9 @@ canvas::~canvas()
 	this->free();
 }
 
+/**
+ *
+ */
 void canvas::free(void)
 {
 
@@ -28,6 +31,9 @@ void canvas::free(void)
 	freepalette();
 }
 
+/**
+ *
+ */
 void canvas::freebuffers(void)
 {
 	if (!_usr_buffer) {
@@ -40,6 +46,9 @@ void canvas::freebuffers(void)
 	}
 }
 
+/**
+ *
+ */
 void canvas::freepalette(void)
 {
 	if (_palette) {
@@ -58,8 +67,12 @@ canvas::canvas()
 	initvars();
 }
 
-/*
+/**
  * User supplied memory buffer ptr (for SDL surfaces)
+ *
+ * @param width pixels
+ * @param height pixels
+ * @param buffer pointer to user defined buffer
  */
 canvas::canvas(int32_t width, int32_t height, ptr_t buffer)
 {
@@ -71,6 +84,13 @@ canvas::canvas(int32_t width, int32_t height, ptr_t buffer)
 	size(width,height);
 }
 
+/**
+ * Create a canvas with a specific bpp
+ *
+ * @param width pixels
+ * @param height pixels
+ * @param bpp bits per pixel
+ */
 canvas::canvas(int32_t width, int32_t height, pixel_t bpp)
 {
 	initvars();
@@ -88,6 +108,11 @@ canvas::canvas(int32_t width, int32_t height, pixel_t bpp)
 	size(width,height);
 }
 
+/**
+ * Copy constructor, duplicates user defined buffers
+ *
+ * @param img canvas object
+ */
 canvas::canvas(const canvas& img)
 {
 	this->free();
@@ -100,13 +125,17 @@ canvas::canvas(const canvas& img)
 	_bpp=img._bpp;
 	_planes=img._planes;
 
-	copypalette(img);
-	allocate();
-
-	for (int i=0;i<_planes;i++)
-		memory::fast_memcpy(_plane[i],img._plane[i],_size);
+	if (copypalette(img) && allocate())
+		for (int i=0;i<_planes;i++)
+			memory::fast_memcpy(_plane[i],img._plane[i],_size);
 }
 
+/**
+ * Copy with reference to user defined buffers
+ *
+ * @param img canvas object
+ * @return copy of img
+ */
 canvas& canvas::operator = (const canvas& img)
 {
 	_size=img._size;
@@ -117,27 +146,23 @@ canvas& canvas::operator = (const canvas& img)
 
 	this->free();
 
-	copypalette(img);
-	allocate();
-
-	if (img._usr_buffer) {
-		_plane[0] = img._plane[0];
-		_usr_buffer=true;
-	} else {
-		if (!img._usr_buffer) {
+	if (copypalette(img) && allocate()) {
+		if (img._usr_buffer) {
+			_plane[0] = img._plane[0];
+			_usr_buffer=true;
+		} else {
 			for (int i=0;i<_planes;i++)
 				memory::fast_memcpy(_plane[i],img._plane[i],_size);
 		}
+		return *this;
+	} else {
+		return NULL;
 	}
-
-	return *this;
 }
 
-unsigned char& canvas::operator [] (const int offset)
-{
-	return this->_plane[0][offset];
-}
-
+/**
+ * Initialize all class variables
+ */
 void canvas::initvars(void)
 {
 	_bpp=8;
@@ -152,32 +177,50 @@ void canvas::initvars(void)
 	_palette_size=0;
 	_usr_buffer=false;
 
-	for(int i=0; i<sizeof(_plane); i++) _plane[i]=NULL;
+	for(int i=0; i<MAX_PLANES; i++) _plane[i]=NULL;
 }
 
+/**
+ * Set size/resize image
+ *
+ * @param width pixels
+ * @param height pixels
+ * @return true if success, false if memory allocation failed
+ */
 bool canvas::size(int32_t width, int32_t height)
 {
-	if (!_usr_buffer) {
-	}
-
 	_width=width;
 	_height=height;
 
 	_size=_width*_height/(8/_bpp);
 
+	freebuffers();
+
 	return allocate();
 }
 
-bool canvas::pow2(uint32_t in) // count how many bits are high in a number, useful for knowing if a number is the power of 2
+/**
+ * count how many bits are high in a number, useful for knowing if a number is the power of 2
+ *
+ * @param in number
+ * @return true if number is an exact power of 2
+ */
+bool canvas::pow2(uint32_t in) //
 {
 	return (in & (in - 1)) == 0;
 }
 
-int canvas::bitpow(uint32_t in) // convert power of 2 decimal to bit shift count
+/**
+ * convert power of 2 to bit shift count
+ *
+ * @param in power of 2
+ * @return shift count
+ */
+int canvas::bitpow(uint32_t in) //
 {
 	int count=0;
 
-	for(long unsigned int i=0;i<sizeof(in)*8;i++) {
+	for(uint32_t i=0;i<sizeof(in)*8;i++) {
 		if (in&1) break;
 		count++;
 		in>>=1;
@@ -185,28 +228,29 @@ int canvas::bitpow(uint32_t in) // convert power of 2 decimal to bit shift count
 	return count;
 }
 
+/**
+ * allocate buffers for storage
+ *
+ * @return true if success, false if failure to allocate memory
+ */
 bool canvas::allocate(void)
 {
 	if (!_usr_buffer) {
-		switch(_bpp) {
-		case 8:
-			_buffer=new unsigned far char [_size];
-			if(_buffer == NULL) return false;
-
-			break;
-		case 4:
-		case 1:
-			for (int i=0;i < _bpp; i++) {
-				_planes[i]=new unsigned far char [_size];
-				if (_planes[i] == NULL) return false;
+		for (int i=0;i < _planes; i++) {
+			_plane[i]=new unsigned far char [_size];
+			if (_plane[i] == NULL) {
+				freebuffers();
+				return false;
 			}
-			break;
 		}
 	}
 
 	if(_palette == NULL) {
 		copypalette(_default_palette, _default_palette_size);
-		if (_palette == NULL) return false;
+		if (_palette == NULL) {
+			freebuffers();
+			return false;
+		}
 	}
 
 	this->clear();
@@ -214,33 +258,45 @@ bool canvas::allocate(void)
 	return true;
 }
 
+/**
+ * fill buffer with color value
+ *
+ * @param color palette index
+ */
 void canvas::fill(pixel_t color)
 {
 #ifdef __GNUC__
-	ptr_t end=_buffer+_width*_height;
+	ptr_t end=_plane[0]+_size;
 	if (((_width*_height) & 3) == 0) { // dword optimization
 		uint32_t c=(color<<24)|(color<<16)|(color<<8)|(color);
 		uint32_t *dwend = (uint32_t *)end;
-		for(uint32_t *p=(uint32_t *)_buffer;p<dwend;p++) *p=c;
+		for(uint32_t *p=(uint32_t *)_plane[0];p<dwend;p++) *p=c;
 	} else {
-		for(ptr_t p=_buffer;p<end;p++) *p=color;
+		for(ptr_t p=_plane[0];p<end;p++) *p=color;
 	}
 #else
 	switch(_bpp) {
 	case 8:
-		for(ptr_t p=_buffer;p<_buffer+_size;p++) *p=color;
+		for(ptr_t p=_plane[0];p<_plane[0]+_size;p++) *p=color;
 		break;
 	case 4:
 	case 1:
-		for (int i=0; i<_bpp; i++) {
-			for(ptr_t p=_planes[i];p<_planes[i]+_size;p++) *p=(color & (1<<i));
+		for (int i=0; i<_planes; i++) {
+			for(ptr_t p=_plane[i];p<_plane[i]+_size;p++) *p=(color & (1<<i));
 		}
 		break;
 	}
 #endif
 }
 
-// weighted squares color distance calculation
+/**
+ * weighted squares color distance calculation
+ * This uses perceptual color weights to bias results
+ *
+ * @param a RGB tuple
+ * @param b RGB tuple
+ * @return absolute distance between 2 RGB tuples
+ */
 inline uint32_t canvas::wcolordist(palette::pal_t *a, palette::pal_t *b)
 {
 	int32_t R,G,B;
@@ -251,7 +307,13 @@ inline uint32_t canvas::wcolordist(palette::pal_t *a, palette::pal_t *b)
 	return (uint32_t)2*R+4*G+3*B;
 }
 
-// squares color distance calculation
+/**
+ * squares color distance calculation
+ *
+ * @param a RGB tuple
+ * @param b RGB tuple
+ * @return absolute distance between 2 RGB tuples
+ */
 inline uint32_t canvas::colordist(palette::pal_t *a, palette::pal_t *b)
 {
 	int32_t R,G,B;
@@ -262,7 +324,12 @@ inline uint32_t canvas::colordist(palette::pal_t *a, palette::pal_t *b)
 	return (uint32_t)R+G+B;
 }
 
-// find closest matching color in image palette
+/**
+ * find closest matching color in image palette
+ *
+ * @param p RGB tuple
+ * @return palette index
+ */
 unsigned char canvas::findnearestpalentry(palette::pal_t *p)
 {
 	int i;
@@ -298,6 +365,12 @@ unsigned char canvas::findnearestpalentry(palette::pal_t *p)
 	return (unsigned char)lowindex;
 }
 
+/**
+ * caching routine to reduce palette lookup calculations
+ *
+ * @param p RGB tuple
+ * @return palette index
+ */
 int canvas::lookuppalcache(palette::pal_t *p)
 {
 	int i;
@@ -312,6 +385,12 @@ int canvas::lookuppalcache(palette::pal_t *p)
 	return -1;
 }
 
+/**
+ * find exact match for RGB tuple in palette
+ *
+ * @param p RGB tuple
+ * @return palette index
+ */
 pixel_t canvas::lookuppalentry(palette::pal_t *p)
 {
 	int i;
@@ -326,6 +405,16 @@ pixel_t canvas::lookuppalentry(palette::pal_t *p)
 	return _palette_size-1;
 }
 
+/**
+ * draw a box, with optional fill
+ *
+ * @param x box x location
+ * @param y box y location
+ * @param width box width in pixels
+ * @param height box height in pixels
+ * @param color color palette index of box border
+ * @param filled true: filled box, false: outlined box
+ */
 void canvas::drawbox(int x, int y, int width, int height, pixel_t color, bool filled)
 {
 	if (filled) {
@@ -345,7 +434,16 @@ void canvas::drawbox(int x, int y, int width, int height, pixel_t color, bool fi
 	}
 }
 
-void canvas::line(int x1, int y1, int x2, int y2, unsigned char c)
+/**
+ * draw a line using the bresenham algorithm
+ *
+ * @param x1 start x
+ * @param y1 start y
+ * @param x2 end x
+ * @param y2 end y
+ * @param c color palette index
+ */
+void canvas::line(int x1, int y1, int x2, int y2, pixel_t color)
 {
 		int x,y,dx,dy,dx1,dy1,px,py,xe,ye,i;
 
@@ -370,7 +468,7 @@ void canvas::line(int x1, int y1, int x2, int y2, unsigned char c)
 						y=y2;
 						xe=x1;
 				}
-				setpixel(x,y,c);
+				setpixel(x,y,color);
 				for(i=0;x<xe;i++)
 				{
 						x=x+1;
@@ -390,7 +488,7 @@ void canvas::line(int x1, int y1, int x2, int y2, unsigned char c)
 								}
 								px=px+2*(dy1-dx1);
 						}
-						setpixel(x,y,c);
+						setpixel(x,y,color);
 				}
 		}
 		else
@@ -407,7 +505,7 @@ void canvas::line(int x1, int y1, int x2, int y2, unsigned char c)
 						y=y2;
 						ye=y1;
 				}
-				setpixel(x,y,c);
+				setpixel(x,y,color);
 				for(i=0;y<ye;i++)
 				{
 						y=y+1;
@@ -427,12 +525,24 @@ void canvas::line(int x1, int y1, int x2, int y2, unsigned char c)
 								}
 								py=py+2*(dx1-dy1);
 						}
-						setpixel(x,y,c);
+						setpixel(x,y,color);
 				}
 		}
 }
 
 
+/**
+ * copy section of canvas from source location to destination
+ * copies to temporary buffer to handle overlaps
+ *
+ * @param x1
+ * @param y1
+ * @param x2
+ * @param y2
+ * @param width
+ * @param height
+ */
+//TODO: check if overlap, only use tmp if overlap, rewrite to handle multiple bit depths
 void canvas::copyto(int x1, int y1, int x2, int y2, int width, int height)
 {
 	unsigned int src,rem,dest,cnt;
@@ -464,6 +574,18 @@ void canvas::copyto(int x1, int y1, int x2, int y2, int width, int height)
 	delete[] tmp;
 }
 
+/**
+ * copy a section of a source canvas to a destination canvas
+ *
+ * @param src
+ * @param dest
+ * @param sx
+ * @param sy
+ * @param dx
+ * @param dy
+ * @param width
+ * @param height
+ */
 void canvas::copyto(canvas& src, canvas& dest, int sx, int sy, int dx, int dy, int width, int height)
 {
 	unsigned int rem,dcnt,cnt,dw,iw;
@@ -486,6 +608,12 @@ void canvas::copyto(canvas& src, canvas& dest, int sx, int sy, int dx, int dy, i
 	}
 }
 
+/**
+ * rotate this image by angle and draw it to the dest image
+ *
+ * @param dest destination canvas
+ * @param angle degrees
+ */
 void canvas::rotate(canvas& dest, int angle)
 {
 	int32_t hwidth = _width / 2;
@@ -515,6 +643,11 @@ void canvas::rotate(canvas& dest, int angle)
 	}
 }
 
+/**
+ * rotate this image by angle degrees, replacing this with rotated result
+ *
+ * @param angle degrees
+ */
 void canvas::rotate(int angle)
 {
 	canvas tmp = *this;
@@ -523,22 +656,26 @@ void canvas::rotate(int angle)
 
 }
 
+/**
+ * duplicate palette from source canvas
+ *
+ * @param img source canvas
+ * @return true on success, false on memory allocation failure
+ */
 bool canvas::copypalette(const canvas& img)
 {
-	if (_palette == img._palette) return true; // default palette is statically allocated
+	if (_palette == img._palette) return true; ///< default palette is statically allocated
 
-	_palette_size=img.palette_size();
-	if (_palette) delete[] _palette;
-
-	_palette=new palette::pal_t[_palette_size];
-
-	if (_palette == NULL) return false;
-
-	memcpy(_palette,img.getpalette(),sizeof(palette::pal_t)*_palette_size);
-
-	return true;
+	return copypalette(img.getpalette(),img.palette_size());
 }
 
+/**
+ * duplicate source palette to this palette
+ *
+ * @param p source palette
+ * @param size number of palette entries
+ * @return true on success, false on memory allocation failure
+ */
 bool canvas::copypalette(palette::pal_t *p, int size)
 {
 	_palette_size=size;
@@ -549,29 +686,40 @@ bool canvas::copypalette(palette::pal_t *p, int size)
 
 	if (_palette == NULL) return false;
 
-	memcpy(_palette,p,sizeof(palette::pal_t)*_palette_size);
+	setpalette(p);
 
 	return true;
 }
 
+/**
+ * copy source palette directly into this palette
+ *
+ * @param p source palette
+ */
 void canvas::setpalette(palette::pal_t *p)
 {
         memcpy(_palette,p,sizeof(palette::pal_t)*_palette_size);
 }
 
+/**
+ * duplicate static palette into this palette
+ *
+ * @param pal pal_type ENUM
+ * @return true on success, false on memory allocation failure
+ */
 bool canvas::setpalette(palette::pal_type pal)
 {
-	_palette_size=palette::palettes[pal].palette_entries;
-	_palette=new palette::pal_t[_palette_size];
-
-	if (_palette == NULL) return false;
-
-	memcpy(_palette,palette::palettes[pal].pal,sizeof(palette::pal_t)*_palette_size);
-
-	return true;
+	return copypalette((palette::pal_t *)palette::palettes[pal].pal,palette::palettes[pal].palette_entries);
 }
 
-void canvas::setdefpalette(palette::pal_t *p, int size)
+/**
+ * set static (global) canvas palette
+ *
+ * @param p palette
+ * @param size entries
+ * @return true on success, false on memory allocation failure
+ */
+bool canvas::setdefpalette(palette::pal_t *p, int size)
 {
 	_default_palette_size=size;
 
@@ -581,32 +729,34 @@ void canvas::setdefpalette(palette::pal_t *p, int size)
 
 	if (_default_palette == NULL) {
 		_default_palette_size=0;
-		return;
+		return false;
 	}
 
 	memcpy(_default_palette,p,sizeof(palette::pal_t)*_default_palette_size);
-
-	_default_palette_isset=true;
-}
-
-bool canvas::setdefpalette(palette::pal_type pal)
-{
-	_default_palette_size=palette::palettes[pal].palette_entries;
-
-	if (_default_palette_isset == true) delete[] _default_palette;
-
-	_default_palette=new palette::pal_t[_default_palette_size];
-
-	if (_default_palette == NULL) return false;
-
-	memcpy(_default_palette,palette::palettes[pal].pal,sizeof(palette::pal_t)*_default_palette_size);
 
 	_default_palette_isset=true;
 
 	return true;
 }
 
-// general purpose scale/draw this image onto another image
+/**
+ * set static (global) canvas palette by ENUM reference
+ *
+ * @param pal pal_type ENUM
+ * @return true on success, false on memory allocation failure
+ */
+bool canvas::setdefpalette(palette::pal_type pal)
+{
+	return setdefpalette((palette::pal_t *)palette::palettes[pal].pal,palette::palettes[pal].palette_entries);
+}
+
+/**
+ * general purpose scale/draw this image onto another image
+ *
+ * @param dest canvas to draw this to
+ * @param width scaled width
+ * @param height scaled height
+ */
 void canvas::scale(canvas& dest, int width, int height)
 {
 	int x,y;
@@ -622,6 +772,13 @@ void canvas::scale(canvas& dest, int width, int height)
 	}
 }
 
+/**
+ * scale this canvas and return copy
+ *
+ * @param width scaled width
+ * @param height scaled height
+ * @return scaled copy of this canvas
+ */
 canvas canvas::scale(int width, int height)
 {
 	canvas ret(width,height,_bpp);
@@ -633,7 +790,12 @@ canvas canvas::scale(int width, int height)
 	return ret;
 }
 
-// nearest neighbor scaling, this is the fastest path of all of the scale methods
+/**
+ * nearest neighbor scaling, this is the fastest path of all of the scale methods
+ * copy scaled img to this, using this dimensions
+ *
+ * @param img canvas to scale to this dimensions
+ */
 void canvas::scale(canvas& img)
 {
 	int32_t x,y;
@@ -659,6 +821,7 @@ void canvas::scale(canvas& img)
 				tx=x>>scale_shift; // power of 2 scaling
 				setpixel(x,y,img.getpixel(tx,ty));
 			}
+			// duplicate rows quickly
 			for (int32_t rowcnt=y;rowcnt<y+scale_factor;rowcnt++) {
 				memory::fast_memcpy(&_buffer[rowcnt*_width],&_buffer[y*_width],_width);
 			}
@@ -678,6 +841,10 @@ void canvas::scale(canvas& img)
 }
 
 // TODO 2x smooth zoom
+/**
+ *
+ * @param img
+ */
 void canvas::scaleDCCI(canvas& img)
 {
 	/*
@@ -706,6 +873,13 @@ void canvas::scaleDCCI(canvas& img)
 	*/
 }
 
+/**
+ *
+ * @param x
+ * @param y
+ * @param img
+ * @param transparent
+ */
 void canvas::drawimage(int x, int y, canvas& img, bool transparent)
 {
 	int32_t w,h,iw;
@@ -753,8 +927,17 @@ void canvas::drawimage(int x, int y, canvas& img, bool transparent)
 	}
 }
 
-/*
+/**
  * Source image wider or taller than destination, allows for panning or sprite sheets
+ *
+ * @param x
+ * @param y
+ * @param sx
+ * @param sy
+ * @param width
+ * @param height
+ * @param img
+ * @param transparent
  */
 void canvas::drawimage(int x, int y, int sx, int sy, int width, int height, canvas& img, bool transparent)
 {

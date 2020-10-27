@@ -53,7 +53,7 @@ public:
 	canvas(int32_t width, int32_t height, pixel_t bpp);
 	canvas(const canvas& img);
 	canvas& operator = (const canvas& img);
-	unsigned char& operator [] (const int offset);
+//	unsigned char& operator [] (const int offset);
 	bool pow2(uint32_t in);
 	int bitpow(uint32_t in);
 	virtual void free(void);
@@ -65,10 +65,9 @@ public:
 		{ return _width; }
 	virtual int32_t height(void) const
 		{ return _height; }
-	virtual void setpixel(int x, int y) { _buffer[y*_width+x]=_bgcolor; }
-	virtual void setpixel(int x, int y, pixel_t color) { _buffer[y*_width+x]=color; }
-	virtual pixel_t getpixel(int x, int y) const
-		{ return _buffer[y*_width+x]; }
+	virtual void setpixel(int x, int y);
+	virtual void setpixel(int x, int y, pixel_t color);
+	virtual pixel_t getpixel(int x, int y) const;
 	virtual bool allocate(void);
 	virtual void drawbox(int x, int y, int width, int height, pixel_t color, bool filled = true);
 	virtual void drawimage(int x, int y, canvas& img, bool transparent = false);
@@ -83,8 +82,8 @@ public:
 	virtual bool setpalette(palette::pal_type pal);
 	virtual void setpalette(palette::pal_t *pal);
 	static bool setdefpalette(palette::pal_type pal);
-	static void setdefpalette(palette::pal_t *pal, int size);
-	virtual const palette::pal_t *getpalette(void) const
+	static bool setdefpalette(palette::pal_t *pal, int size);
+	virtual palette::pal_t *getpalette(void) const
 		{ return _palette; }
 	virtual int palette_size(void) const { return _palette_size; }
 	virtual palette::pal_t getpalentry(pixel_t i) const
@@ -106,11 +105,6 @@ public:
 	virtual canvas scale(int width, int height);
 	virtual void scale(canvas& img);
 	virtual void scaleDCCI(canvas& img);
-
-	pixel_t getbpp() const
-	{
-		return _bpp;
-	}
 };
 
 #endif /* CANVAS_H_ */
